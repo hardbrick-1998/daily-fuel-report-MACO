@@ -28,7 +28,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("☢️ DEXTER // FUEL_HUB")
+st.title("☢️ DAILY REPORT FUEL MACO HAULING")
 st.markdown('<p class="caption-text">Part of DEXTER PROJECT | MACO Hauling | PT Saptaindra Sejati</p>', unsafe_allow_html=True)
 
 # ==========================================
