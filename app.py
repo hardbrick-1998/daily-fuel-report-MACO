@@ -63,29 +63,29 @@ def load_master_data():
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : INPUT INTERFACE (DINAMIS)
+# LANGKAH 3 : INPUT INTERFACE (DENGAN KALENDER MANUAL)
 # ==========================================
 with st.sidebar:
     st.markdown("### 🧬 INPUT PARAMETERS")
     admin_nama = st.text_input("Nama Anda", placeholder="Masukan Nama...")
+    
+    # --- [BARU] FITUR TANGGAL MANUAL ---
+    # Default-nya adalah hari ini (datetime.now)
+    # Tapi admin bisa klik dan pilih tanggal kemarin/lusa
+    tgl_laporan = st.date_input("TANGGAL LAPORAN", datetime.now())
+    # -----------------------------------
+    
     shift = st.selectbox("Shift Berapa", ["Shift 1 (DAY)", "Shift 2 (NIGHT)"])
     
     st.markdown("---")
     
-    # --- LOGIKA PILIHAN TANGKI OTOMATIS ---
-    # Cek apakah data master berhasil dimuat dan punya kolom 'Tank'
+    # LOGIKA PILIHAN TANGKI OTOMATIS
     if not df_master.empty and 'Tank' in df_master.columns:
-        # 1. Ambil unique values (biar tidak ada duplikat)
-        # 2. Dropna (hapus yang kosong)
-        # 3. Urutkan abjad (sorted)
         daftar_tangki = sorted(df_master['Tank'].dropna().unique().tolist())
     else:
-        # Fallback jika master gagal load
         daftar_tangki = ["GAGAL LOAD MASTER"]
     
-    # Masukkan daftar otomatis tadi ke selectbox
     tangki_pilihan = st.selectbox("Pilih Tangki", daftar_tangki)
-    # ---------------------------------------
     
     tinggi_cm = st.number_input("Tinggi Sounding (CM)", min_value=0.0, step=0.1, format="%.2f")
     
@@ -95,7 +95,6 @@ with st.sidebar:
 # ==========================================
 # LANGKAH 4 : LOGIKA LOCK DATA (LOCAL STORAGE)
 # ==========================================
-
 
 if tombol_submit:
     if tinggi_cm > 0 and admin_nama:
@@ -108,13 +107,16 @@ if tombol_submit:
             st.markdown("---")
             col1, col2, col3 = st.columns(3)
             col1.metric("OPERATOR", admin_nama)
-            col2.metric("SOUNDING", f"{tinggi_cm} CM")
+            # Tampilkan tanggal yang dipilih user agar yakin
+            col2.metric("TANGGAL", tgl_laporan.strftime("%d-%m-%Y")) 
             col3.metric("VOLUME", f"{volume_hasil:,.0f} L")
             
             # LOCK DATA KE MEMORI HP
             new_data = {
                 "Nama": admin_nama,
-                "Tanggal": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                # REVISI: Gunakan tanggal manual pilihan user
+                # Format kita ubah jadi YYYY-MM-DD (Standar Internasional)
+                "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
                 "Shift": shift,
                 "Tangki": tangki_pilihan,
                 "Tinggi (cm)": tinggi_cm,
@@ -125,7 +127,7 @@ if tombol_submit:
             
             st.toast("🔒 DATA LOCKED IN DEVICE STORAGE!", icon="💾")
             time.sleep(1)
-            st.rerun() # Refresh agar tabel antrean terupdate
+            st.rerun() 
         else:
             st.warning("UNIT NOT FOUND.")
     else:
