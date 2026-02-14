@@ -63,15 +63,32 @@ def load_master_data():
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : INPUT INTERFACE
+# LANGKAH 3 : INPUT INTERFACE (DINAMIS)
 # ==========================================
 with st.sidebar:
     st.markdown("### 🧬 INPUT PARAMETERS")
     admin_nama = st.text_input("Nama Anda", placeholder="Masukan Nama...")
     shift = st.selectbox("Shift Berapa", ["Shift 1 (DAY)", "Shift 2 (NIGHT)"])
+    
     st.markdown("---")
-    tangki_pilihan = st.selectbox("Pilih Tangki", ["FT_81", "FT_82", "PITSTOP_KM39", "PITSTOP_KM45"])
+    
+    # --- LOGIKA PILIHAN TANGKI OTOMATIS ---
+    # Cek apakah data master berhasil dimuat dan punya kolom 'Tank'
+    if not df_master.empty and 'Tank' in df_master.columns:
+        # 1. Ambil unique values (biar tidak ada duplikat)
+        # 2. Dropna (hapus yang kosong)
+        # 3. Urutkan abjad (sorted)
+        daftar_tangki = sorted(df_master['Tank'].dropna().unique().tolist())
+    else:
+        # Fallback jika master gagal load
+        daftar_tangki = ["GAGAL LOAD MASTER"]
+    
+    # Masukkan daftar otomatis tadi ke selectbox
+    tangki_pilihan = st.selectbox("Pilih Tangki", daftar_tangki)
+    # ---------------------------------------
+    
     tinggi_cm = st.number_input("Tinggi Sounding (CM)", min_value=0.0, step=0.1, format="%.2f")
+    
     st.markdown("<br>", unsafe_allow_html=True)
     tombol_submit = st.button("KIRIM DATA KE LOKAL")
 
@@ -115,7 +132,7 @@ if tombol_submit:
         st.warning("ISI NAMA DAN DATA SOUNDING.")
 
 # ==========================================
-# LANGKAH 5 : SYNC MONITORING (REVISI ANTI-ERROR 400)
+# LANGKAH 5 : SYNC MONITORING (FINAL & FIXED)
 # ==========================================
 st.markdown("---")
 if dex_queue:
@@ -125,48 +142,39 @@ if dex_queue:
     if st.button("🚀 SYNC ALL TO GOOGLE SHEETS"):
         try:
             with st.spinner("TRANSMITTING TO DEXTER SERVER..."):
-                # ID Spreadsheet Anda
-                MY_SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw"
                 
-                # --- PERBAIKAN LOGIKA SYNC ---
-                # 1. Siapkan data baru dari HP
-                df_new = pd.DataFrame(dex_queue)
+                # 1. Siapkan data baru dari antrean HP
+                # Ubah ke String agar Google Sheets aman
+                df_new = pd.DataFrame(dex_queue).astype(str)
                 
-                # 2. Paksa semua data jadi string (TEKS) agar Google Sheets tidak bingung format
-                # Ini kunci untuk menghindari Error 400 karena ketidakcocokan tipe data
-                df_new = df_new.astype(str)
-                
-                # 3. Baca data lama DULU untuk memastikan koneksi & struktur kolom
-                # Gunakan usecols agar ringan, kita cuma butuh strukturnya
                 try:
-                    df_old = conn.read(spreadsheet=MY_SHEET_ID, worksheet="HISTORICAL")
+                    # 2. Coba baca data lama di Cloud (HISTORICAL)
+                    # Python otomatis baca secrets.toml, jadi tidak perlu URL manual
+                    df_old = conn.read(worksheet="HISTORICAL")
                     
-                    # 4. GABUNGKAN (Data Lama + Data Baru)
-                    # Metode 'Update' di library ini sebenarnya menimpa (overwrite) seluruh sheet
-                    # Jadi kita WAJIB menggabungkan data lama + baru sebelum kirim
+                    # 3. Gabungkan (Data Lama + Data Baru)
                     df_final = pd.concat([df_old, df_new], ignore_index=True)
                     
-                    # 5. KIRIM DATA FINAL
-                    conn.update(spreadsheet=MY_SHEET_ID, worksheet="HISTORICAL", data=df_final)
-                    
-                    # 6. BERSIHKAN MEMORI HP
-                    localS.deleteAll()
-                    st.success("✅ ALL DATA SYNCED SUCCESSFULLY!")
-                    time.sleep(2)
-                    st.rerun()
+                    # 4. Update ke Cloud
+                    conn.update(worksheet="HISTORICAL", data=df_final)
                     
                 except Exception as e:
-                    # Jika gagal baca (misal sheet kosong/belum ada), coba kirim data baru saja
-                    # Ini penanganan error cerdas (Fallback)
-                    st.warning(f"Mode Append Aktif (Error Baca: {e})")
-                    conn.update(spreadsheet=MY_SHEET_ID, worksheet="HISTORICAL", data=df_new)
-                    localS.deleteAll()
-                    st.success("✅ DATA AWAL BERHASIL DISIMPAN!")
-                    time.sleep(2)
-                    st.rerun()
+                    # Fallback: Jika gagal baca (misal sheet kosong/baru dibuat)
+                    # Langsung tulis data baru saja
+                    conn.update(worksheet="HISTORICAL", data=df_new)
+                
+                # 5. BERSIHKAN MEMORI HP (Hanya jika sukses)
+                localS.deleteAll()
+                
+                # REVISI: Pakai emoji asli, bukan kode teks
+                st.toast("DATA SENT TO DEXTER CLOUD!", icon="🚀") 
+                st.success("✅ SYNC SUCCESSFUL! DATABASE UPDATED.")
+                
+                time.sleep(2)
+                st.rerun()
                     
         except Exception as e:
-            st.error(f"SYNC FAILED TOTAL: {e}")
+            st.error(f"SYNC FAILED: {e}")
 else:
     st.info("💡 SYSTEM STATUS: ALL DATA SYNCED. WAITING FOR INPUT...")
 
