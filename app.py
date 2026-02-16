@@ -101,8 +101,8 @@ with col_kiri:
     # --- LOGIKA GAMBAR OTOMATIS (MAPPING) ---
     # Masukkan semua daftar file gambar Anda di sini
     image_map = {
-        "FT_57": "FT_83.jpg",
-        "FT_73": "FT_84.jpg",
+        "FT_83": "FT_83.jpg",
+        "FT_84": "FT_84.jpg",
         # Tambahkan tangki lainnya di sini...
     }
 
