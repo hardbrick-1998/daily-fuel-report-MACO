@@ -150,8 +150,8 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # JUDUL & SUBJUDUL
-st.markdown("""<div class="title-box"><h1>📋 DAILY REPORT STOCK FUEL</h1></div>""", unsafe_allow_html=True)
-st.markdown('<p class="caption-text">DEXTER PROJECT | MACO HAULING</p>', unsafe_allow_html=True)
+st.markdown("""<div class="title-box"><h1>📋 TERRA DIGITAL FUEL MACO</h1></div>""", unsafe_allow_html=True)
+st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO HAULING</p>', unsafe_allow_html=True)
 
 # ==========================================
 # LANGKAH 2 : INITIALIZE LOCAL STORAGE & AUTO-SYNC CHECK
@@ -210,7 +210,7 @@ with st.sidebar:
     st.info(f"Connected to site : MACO")
 
 # --- HEADER SECTION ---
-st.markdown('<p class="caption-text">APPS NAME: INPUT DATA SOUNDING</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text">APPS NAME: DATA SOUNDING FUEL</p>', unsafe_allow_html=True)
 
 # Grid Baris 1: Admin Info
 c1, c2, c3 = st.columns(3)
@@ -227,7 +227,7 @@ st.markdown("---")
 col_kiri, col_kanan = st.columns([1.5, 1])
 
 with col_kiri:
-    st.markdown("### 🚛 PILIH TANGKI")
+    st.markdown("### 🚛 TANGKI")
     
     if not df_master.empty and 'Tank' in df_master.columns:
         daftar_tangki = sorted(df_master['Tank'].dropna().unique().tolist())
@@ -368,7 +368,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("""
     <div style="text-align: center; border: 2px solid #00f2ff; padding: 15px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
         <h2 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0; text-shadow: 0 0 10px #00f2ff;">
-            📊 LAPORAN STOCK FUEL MACO HAULING
+            📊 LAPORAN STOCK FUEL MACO
         </h2>
     </div>
 """, unsafe_allow_html=True)
@@ -437,12 +437,12 @@ try:
             st.markdown(final_table_html, unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔄 REFRESH REPORT"):
+            if st.button("🔄 REFRESH DATA"):
                 st.cache_data.clear()
                 st.rerun()
 
         else:
-            st.info("⚠️ BELUM ADA DATA HARI INI.")
+            st.info("⚠️ BELUM ADA DATA DI TANGGAL DAN SHIFT INI.")
     else:
         st.warning("DATABASE KOSONG.")
 
@@ -451,4 +451,4 @@ except Exception as e:
 
 # Footer
 st.markdown("---")
-st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">DEXTER PROJECT v3.3 FIXED GLOW | MACO HAULING</div>', unsafe_allow_html=True)
+st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
