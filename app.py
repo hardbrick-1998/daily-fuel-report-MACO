@@ -7,7 +7,7 @@ import time
 import os
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (STATUS GLOWING FIX)
+# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FULL FEATURE UPDATE)
 # ==========================================
 st.set_page_config(page_title="TERRA FUEL MACO HAULING", page_icon="📋", layout="wide")
 
@@ -57,10 +57,43 @@ st.markdown("""
         background-color: #0f0f0f !important; color: #00f2ff !important; 
         border: 1px solid #333; font-family: 'Share Tech Mono', monospace; 
     }
-    .stButton > button { 
-        width: 100%; background: linear-gradient(90deg, #00f2ff, #0055ff); 
-        border: none; color: black; font-family: 'Orbitron', sans-serif; font-weight: bold; padding: 10px; 
+
+    /* --- UPDATE TOMBOL KHUSUS (HIJAU & BIRU) --- */
+    
+    /* Tombol Secondary (CEK STOCK) - HIJAU */
+    button[kind="secondary"] {
+        width: 100%; background: linear-gradient(90deg, #00ff00, #008800) !important; 
+        border: none !important; color: black !important; font-family: 'Orbitron', sans-serif !important; 
+        font-weight: bold !important; padding: 10px !important;
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.4); transition: transform 0.2s;
     }
+    button[kind="secondary"]:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 255, 0, 0.8); }
+
+    /* Tombol Primary (KIRIM LAPORAN) - BIRU */
+    button[kind="primary"] {
+        width: 100%; background: linear-gradient(90deg, #00f2ff, #0055ff) !important; 
+        border: none !important; color: black !important; font-family: 'Orbitron', sans-serif !important; 
+        font-weight: bold !important; padding: 10px !important;
+        box-shadow: 0 0 10px rgba(0, 242, 255, 0.4); transition: transform 0.2s;
+    }
+    button[kind="primary"]:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 242, 255, 0.8); }
+
+    /* --- RESULT CARD (KARTU HASIL KONVERSI) --- */
+    .result-card {
+        background-color: rgba(0, 20, 0, 0.9); /* Hijau Gelap */
+        border: 2px solid #00ff00;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        padding: 20px;
+        border-radius: 12px;
+        margin-top: 20px;
+        text-align: center;
+        animation: fadeIn 0.5s;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .result-title { font-family: 'Share Tech Mono'; color: #00ff00; font-size: 0.9em; letter-spacing: 2px; margin-bottom: 5px; }
+    .result-value { font-family: 'Orbitron'; color: #fff; font-size: 2.2em; font-weight: 700; text-shadow: 0 0 15px #00ff00; margin-bottom: 0; }
+    .result-status { font-family: 'Orbitron'; font-size: 1.0em; font-weight: bold; margin-top: 5px; }
     
     /* ============================================================ */
     /* --- CSS TABEL CYBERPUNK (STATUS GLOWING FIX) --- */
@@ -85,31 +118,13 @@ st.markdown("""
     }
     
     .cyber-table td {
-        padding: 12px 5px; border-bottom: 1px solid #333; color: #eee; /* Warna default putih abu */
+        padding: 12px 5px; border-bottom: 1px solid #333; color: #eee;
     }
 
-    /* --- UPDATE: STATUS WARNA & EFEK LAMPU (IMPORTANT) --- */
-    
-    /* AMAN = HIJAU MENYALA */
-    .status-aman { 
-        color: #00ff00 !important; 
-        text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00 !important; 
-        font-weight: bold;
-    }
-    
-    /* CUKUP = KUNING MENYALA */
-    .status-cukup { 
-        color: #ffff00 !important; 
-        text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00 !important; 
-        font-weight: bold;
-    }
-    
-    /* KURANG = MERAH MENYALA */
-    .status-kurang { 
-        color: #ff0044 !important; /* Pakai Merah Neon/Pinkish dikit biar terang di hitam */
-        text-shadow: 0 0 10px #ff0044, 0 0 20px #ff0044 !important; 
-        font-weight: bold;
-    }
+    /* STATUS WARNA & EFEK LAMPU */
+    .status-aman { color: #00ff00 !important; text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00 !important; font-weight: bold; }
+    .status-cukup { color: #ffff00 !important; text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00 !important; font-weight: bold; }
+    .status-kurang { color: #ff0044 !important; text-shadow: 0 0 10px #ff0044, 0 0 20px #ff0044 !important; font-weight: bold; }
 
     /* FOOTER */
     .cyber-footer {
@@ -129,6 +144,7 @@ st.markdown("""
         .cyber-table th, .cyber-table td { padding: 10px 2px !important; }
         .footer-label { font-size: 0.8em !important; }
         .footer-value { font-size: 1.0em !important; }
+        .result-value { font-size: 1.8em; }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -218,7 +234,7 @@ with col_kiri:
     else:
         daftar_tangki = ["DATABASE_ERROR"]
 
-    tangki_pilihan = st.selectbox("CHOOSE UNIT ID", daftar_tangki)
+    tangki_pilihan = st.selectbox("SILAHKAN PILIH TANGKI", daftar_tangki)
 
     image_map = {
         "FT_57": "FT_57.jpeg", "FT_73": "FT_73.jpeg", "FT_74": "FT_74.jpeg",
@@ -247,57 +263,100 @@ with col_kiri:
 with col_kanan:
     st.markdown("### 📏 SOUNDING")
     with st.container():
-        tinggi_cm = st.number_input("DEPTH (CM)", min_value=0.0, step=0.1, format="%.2f")
+        tinggi_cm = st.number_input("SILAHKAN ISI ANGKA SOUNDINGAN (CM)", min_value=0.0, step=0.1, format="%.2f")
         st.markdown("<br>", unsafe_allow_html=True)
-        # SMART BUTTON
-        tombol_submit = st.button("🔌 KIRIM LAPORAN")
+        
+        # --- UPDATE: DUA TOMBOL (CEK & KIRIM) ---
+        c_btn1, c_btn2 = st.columns(2)
+        with c_btn1:
+            # Tombol Hijau (Secondary)
+            tombol_cek = st.button("🔍 CEK STOCK", type="secondary")
+        with c_btn2:
+            # Tombol Biru (Primary)
+            tombol_submit = st.button("🔌 KIRIM LAPORAN", type="primary")
+
+        # Placeholder untuk Kartu Hasil (Muncul setelah tombol diklik)
+        result_placeholder = st.empty()
 
 # ==========================================
-# LANGKAH 4 : LOGIKA SIMPAN & SYNC (SMART LOGIC)
+# LANGKAH 4 : LOGIKA HITUNG, KARTU, & SIMPAN
 # ==========================================
 
-if tombol_submit:
-    if tinggi_cm > 0 and admin_nama:
-        df_tangki = df_master[df_master['Tank'] == tangki_pilihan]
-        if not df_tangki.empty:
-            idx = (df_tangki['Tinggi'] - tinggi_cm).abs().idxmin()
-            volume_hasil = df_tangki.loc[idx, 'Liter']
+# Fungsi Bantu Hitung Volume
+def hitung_volume_solar(tank_id, depth_val):
+    if df_master.empty: return None
+    df_tangki = df_master[df_master['Tank'] == tank_id]
+    if df_tangki.empty: return None
+    # Cari nilai terdekat di tabel sounding
+    idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
+    return df_tangki.loc[idx, 'Liter']
+
+# Logika Utama (Jalan jika SALAH SATU tombol ditekan)
+if tombol_cek or tombol_submit:
+    if tinggi_cm >= 0:
+        volume_hasil = hitung_volume_solar(tangki_pilihan, tinggi_cm)
+        
+        if volume_hasil is not None:
+            # Tentukan Warna & Status untuk Kartu
+            if volume_hasil > 15000:
+                status_txt = "AMAN"
+                color_hex = "#00ff00" # Hijau
+            elif volume_hasil > 5000:
+                status_txt = "CUKUP"
+                color_hex = "#ffff00" # Kuning
+            else:
+                status_txt = "KURANG"
+                color_hex = "#ff0044" # Merah
+
+            # --- TAMPILKAN KARTU HASIL (RESULT CARD) ---
+            # CSS .result-card sudah ada di Langkah 1
+            result_placeholder.markdown(f"""
+            <div class="result-card">
+                <div class="result-title">ESTIMASI VOLUME FUEL</div>
+                <div class="result-value">{volume_hasil:,.0f} L</div>
+                <div class="result-status" style="color: {color_hex}; text-shadow: 0 0 15px {color_hex};">
+                    STATUS: {status_txt}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             
-            new_record = {
-                "Nama": admin_nama,
-                "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
-                "Shift": shift,
-                "Tangki": tangki_pilihan,
-                "Tinggi (cm)": tinggi_cm,
-                "Volume (L)": volume_hasil
-            }
-            
-            st.success(f"CALCULATION COMPLETE: {volume_hasil:,.0f} LITERS")
-            
-            with st.spinner("Menghubungkan ke DEXTER Server..."):
-                try:
-                    # COBA ONLINE
-                    df_old = conn.read(worksheet="HISTORICAL", ttl=0)
-                    df_new_row = pd.DataFrame([new_record]).astype(str)
-                    df_final = pd.concat([df_old, df_new_row], ignore_index=True)
-                    conn.update(worksheet="HISTORICAL", data=df_final)
+            # --- JIKA YANG DITEKAN TOMBOL KIRIM, LANJUT SIMPAN KE DB ---
+            if tombol_submit:
+                if admin_nama:
+                    new_record = {
+                        "Nama": admin_nama,
+                        "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
+                        "Shift": shift,
+                        "Tangki": tangki_pilihan,
+                        "Tinggi (cm)": tinggi_cm,
+                        "Volume (L)": volume_hasil
+                    }
                     
-                    if len(dex_queue) > 0:
-                        localS.deleteAll()
-                    st.toast("SUKSES: DATA TERKIRIM!", icon="🚀")
+                    with st.spinner("Mengirim ke Server..."):
+                        try:
+                            # COBA ONLINE
+                            df_old = conn.read(worksheet="HISTORICAL", ttl=0)
+                            df_new_row = pd.DataFrame([new_record]).astype(str)
+                            df_final = pd.concat([df_old, df_new_row], ignore_index=True)
+                            conn.update(worksheet="HISTORICAL", data=df_final)
+                            
+                            if len(dex_queue) > 0: localS.deleteAll()
+                            st.toast("SUKSES: DATA TERKIRIM!", icon="🚀")
+                        
+                        except Exception as e:
+                            # JIKA OFFLINE
+                            dex_queue.append(new_record)
+                            localS.setItem("dexter_historical_queue", dex_queue)
+                            st.toast("OFFLINE: Data disimpan di HP", icon="💾")
                     
-                except Exception as e:
-                    # JIKA OFFLINE
-                    dex_queue.append(new_record)
-                    localS.setItem("dexter_historical_queue", dex_queue)
-                    st.toast("OFFLINE: Data disimpan di HP", icon="💾")
-            
-            time.sleep(1.5)
-            st.rerun() 
+                    time.sleep(1.5)
+                    st.rerun()
+                else:
+                    st.warning("⚠️ MOHON ISI NAMA ADMIN UNTUK LAPORAN.")
         else:
-            st.error("ERROR: UNIT NOT FOUND.")
+            st.error("DATA TANGKI TIDAK DITEMUKAN DI MASTER.")
     else:
-        st.warning("MOHON ISI SEMUA DATA.")
+        st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
 
 # ==========================================
 # LANGKAH 5 : DAILY REPORT DASHBOARD (FIXED COLOR & GLOW)
