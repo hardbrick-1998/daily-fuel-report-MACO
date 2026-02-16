@@ -30,7 +30,7 @@ st.markdown("""
         text-transform: uppercase; 
         text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); 
         letter-spacing: 3px; 
-        text-align: center !important; /* <--- INI KUNCINYA */
+        text-align: center !important;
         padding-top: 10px;
         font-size: 40px !important;
     }
@@ -40,19 +40,19 @@ st.markdown("""
         font-family: 'Share Tech Mono', monospace; 
         color: #ff0055; 
         letter-spacing: 2px; 
-        text-align: center !important; /* <--- INI KUNCINYA */
+        text-align: center !important;
         margin-bottom: 20px;
         display: block;
     }
 
     /* KONFIGURASI GAMBAR (ICON STYLE & GLOWING) */
     div[data-testid="stImage"] img {
-        border: 2px solid #00f2ff !important;        /* Garis Tepi Neon */
-        border-radius: 15px !important;              /* Sudut Tumpul */
-        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); /* Efek Cahaya */
-        max-height: 250px !important;                /* Batasi Tinggi Biar Gak Raksasa */
-        object-fit: cover !important;                /* Crop kotak rapi */
-        transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animasi Halus */
+        border: 2px solid #00f2ff !important;
+        border-radius: 15px !important;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
+        max-height: 250px !important;
+        object-fit: cover !important;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
         display: block;
         margin-left: auto;
         margin-right: auto;
@@ -60,8 +60,8 @@ st.markdown("""
     
     /* EFEK HOVER (SAAT KURSOR ARAH KE GAMBAR) */
     div[data-testid="stImage"] img:hover {
-        transform: scale(1.05); /* Zoom dikit */
-        box-shadow: 0 0 30px rgba(0, 242, 255, 0.9) !important; /* Nyala makin terang */
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(0, 242, 255, 0.9) !important;
         border-color: #fff !important;
     }
 
@@ -78,28 +78,52 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# HAPUS st.title YANG LAMA
-# Ganti dengan HTML manual agar CSS text-align: center bekerja sempurna
 st.markdown("<h1>☢️ DAILY REPORT STOCK FUEL MACO HAULING</h1>", unsafe_allow_html=True)
 st.markdown('<p class="caption-text">Part of DEXTER PROJECT | MACO Hauling | PT Saptaindra Sejati</p>', unsafe_allow_html=True)
 
 # ==========================================
-# LANGKAH 2 : INITIALIZE LOCAL STORAGE & KONEKSI
+# LANGKAH 2 : INITIALIZE LOCAL STORAGE & AUTO-SYNC CHECK
 # ==========================================
 # Inisialisasi 'Buku Catatan' di memori HP
 localS = LocalStorage()
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Ambil antrean data dari memori browser (jika ada)
+# --- KONFIGURASI SPREADSHEET ---
+SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw" # ID Sheet Anda
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTER"
+
+# 1. AMBIL DATA PENDING DARI MEMORI HP
 dex_queue = localS.getItem("dexter_historical_queue")
 if dex_queue is None:
     dex_queue = []
 
-# --- KONFIGURASI SPREADSHEET ---
-SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw" # ID Sheet Anda
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTER"
-HISTORICAL_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit"
+# 2. PROSES AUTO-SYNC (BACKGROUND)
+# Cek apakah ada data nyangkut di HP. Jika ada internet, langsung kirim diam-diam.
+if len(dex_queue) > 0:
+    try:
+        # Coba koneksi ke Cloud
+        df_new = pd.DataFrame(dex_queue).astype(str)
+        
+        # PENTING: ttl=0 agar membaca data terbaru (Real-time), mencegah overwrite
+        df_old = conn.read(worksheet="HISTORICAL", ttl=0)
+        
+        # Gabung dan Update
+        try:
+            df_final = pd.concat([df_old, df_new], ignore_index=True)
+            conn.update(worksheet="HISTORICAL", data=df_final)
+        except:
+            # Jika sheet kosong, langsung tulis data baru
+            conn.update(worksheet="HISTORICAL", data=df_new)
+        
+        # Jika berhasil, bersihkan memori HP
+        localS.deleteAll()
+        dex_queue = [] 
+        st.toast("♻️ DATA PENDING BERHASIL TERKIRIM OTOMATIS!", icon="✅")
+    except Exception as e:
+        # Jika gagal (Offline), biarkan saja. Nanti dicoba lagi.
+        st.toast(f"⚠️ OFFLINE MODE: {len(dex_queue)} Data tersimpan di HP", icon="💾")
 
+# 3. LOAD MASTER DATA
 @st.cache_data(ttl=600)
 def load_master_data():
     try:
@@ -114,15 +138,12 @@ def load_master_data():
             
         return df.dropna(subset=['Tinggi', 'Liter'])
     except Exception as e:
-        st.error(f"GAGAL LOAD MASTER: {e}")
         return pd.DataFrame()
 
-# --- INI BARIS PENTING YANG BIKIN ERROR ---
-# Kita panggil fungsi di atas, lalu hasilnya disimpan ke variable 'df_master'
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : MAIN DASHBOARD INTERFACE (CENTER CONSOLE - ANTI CRASH)
+# LANGKAH 3 : MAIN DASHBOARD INTERFACE
 # ==========================================
 
 with st.sidebar:
@@ -169,28 +190,19 @@ with col_kiri:
         "FT_85": "FT_85.jpeg",
         "FT_87": "FT_87.jpeg",
         "FT_88": "FT_88.jpeg",              
-        # SAYA TAMBAHKAN .jpeg AGAR TIDAK ERROR (Cek file asli kamu ya!)
         "PITSTOP_MIN_NORTH": "PITSTOP_NORTH.jpeg", 
         "PITSTOP_KM39": "PITSTOP_KM39.jpeg",
         "PITSTOP_MIN_CENTRAL": "PITSTOP_CENTRAL.jpeg",
     }
 
-    # Variabel penampung status gambar
+    # Cek keberadaan file gambar
     gambar_ditemukan = False
-    
-    # 1. Cek apakah nama tangki ada di daftar map?
     if tangki_pilihan in image_map:
         nama_file = image_map[tangki_pilihan]
-        
-        # 2. Cek apakah FILE FISIKNYA benar-benar ada di folder?
         if os.path.exists(nama_file):
             st.image(nama_file, caption=f"UNIT: {tangki_pilihan}", width=300)
             gambar_ditemukan = True
-        else:
-            # File terdaftar di map, tapi fisiknya hilang
-            st.warning(f"⚠️ File '{nama_file}' hilang dari folder!")
     
-    # Jika gambar tidak ditemukan (Entah karena tidak di map, atau file hilang)
     if not gambar_ditemukan:
         st.markdown(f"""
         <div style="border: 2px solid #ff0055; padding: 30px; text-align: center; background: rgba(255, 0, 85, 0.05);">
@@ -201,33 +213,26 @@ with col_kiri:
 
 with col_kanan:
     st.markdown("### 📏 SOUNDING")
-    # Membungkus input dalam container bergaya Cyberpunk
     with st.container():
         tinggi_cm = st.number_input("DEPTH (CM)", min_value=0.0, step=0.1, format="%.2f")
-        
         st.markdown("<br>", unsafe_allow_html=True)
-        # Tambahkan instruksi singkat
-        st.info("Silahkan Input tinggi sounding disini.")
-        
-        tombol_submit = st.button("🔌 KIRIM UNTUK DI SCREENSHOT")
+        st.info("Pastikan tongkat sounding menyentuh dasar tangki.")
+        # TOMBOL DISINI SEKARANG "SMART BUTTON"
+        tombol_submit = st.button("🔌 KIRIM UNTUK LAPORAN")
 
 # ==========================================
-# LANGKAH 4 : LOGIKA LOCK DATA (LOCAL STORAGE)
+# LANGKAH 4 : LOGIKA SIMPAN & SYNC (SMART LOGIC)
 # ==========================================
 
 if tombol_submit:
     if tinggi_cm > 0 and admin_nama:
-        # Cari volume berdasarkan master
         df_tangki = df_master[df_master['Tank'] == tangki_pilihan]
         if not df_tangki.empty:
             idx = (df_tangki['Tinggi'] - tinggi_cm).abs().idxmin()
             volume_hasil = df_tangki.loc[idx, 'Liter']
             
-            # Tampilkan Hasil Kalkulasi Besar (Main Area)
-            st.success(f"CALCULATION COMPLETE: {volume_hasil:,.0f} LITERS")
-            
-            # SIMPAN KE LOCAL STORAGE
-            new_data = {
+            # Siapkan Data
+            new_record = {
                 "Nama": admin_nama,
                 "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
                 "Shift": shift,
@@ -235,64 +240,132 @@ if tombol_submit:
                 "Tinggi (cm)": tinggi_cm,
                 "Volume (L)": volume_hasil
             }
-            dex_queue.append(new_data)
-            localS.setItem("dexter_historical_queue", dex_queue)
             
-            st.toast("DATA LOCKED!", icon="🚀")
-            time.sleep(1)
+            st.success(f"CALCULATION COMPLETE: {volume_hasil:,.0f} LITERS")
+            
+            # --- MULAI PROSES SYNC PINTAR ---
+            with st.spinner("Menghubungkan ke DEXTER Server..."):
+                try:
+                    # 1. COBA KIRIM LANGSUNG KE GOOGLE SHEETS (ONLINE)
+                    # ttl=0 WAJIB agar tidak membaca cache lama (Anti-Overwrite)
+                    df_old = conn.read(worksheet="HISTORICAL", ttl=0)
+                    
+                    # Ubah data baru jadi DataFrame dan gabung
+                    df_new_row = pd.DataFrame([new_record]).astype(str)
+                    df_final = pd.concat([df_old, df_new_row], ignore_index=True)
+                    
+                    # Update ke Cloud
+                    conn.update(worksheet="HISTORICAL", data=df_final)
+                    
+                    # Jika berhasil online, pastikan memori HP bersih
+                    if len(dex_queue) > 0:
+                        localS.deleteAll()
+                        
+                    st.toast("SUKSES: DATA TERKIRIM KE CLOUD!", icon="🚀")
+                    
+                except Exception as e:
+                    # 2. JIKA GAGAL (OFFLINE/ERROR), SIMPAN KE MEMORI HP
+                    dex_queue.append(new_record)
+                    localS.setItem("dexter_historical_queue", dex_queue)
+                    
+                    st.toast("JARINGAN BURUK: Data diamankan di Memori HP", icon="💾")
+                    st.warning("⚠️ OFFLINE MODE. Data akan terkirim otomatis saat sinyal kembali.")
+            
+            time.sleep(1.5)
             st.rerun() 
         else:
             st.error("ERROR: UNIT NOT FOUND IN DATABASE.")
     else:
-        st.warning("PLEASE COMPLETE ALL FIELDS.")
+        st.warning("MOHON ISI NAMA DAN DATA SOUNDING.")
 
 # ==========================================
-# LANGKAH 5 : SYNC MONITORING (FINAL & FIXED)
+# LANGKAH 5 : DAILY REPORT DASHBOARD (CYBERPUNK STYLE)
 # ==========================================
 st.markdown("---")
-if dex_queue:
-    st.subheader(f"📡 PENDING SYNC: {len(dex_queue)} RECORDS")
-    st.dataframe(pd.DataFrame(dex_queue), use_container_width=True)
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 1. HEADER LAPORAN
+st.markdown("""
+    <div style="text-align: center; border: 2px solid #00f2ff; padding: 20px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
+        <h2 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0; text-shadow: 0 0 10px #00f2ff;">
+            ☢️ LAPORAN STOCK FUEL MACO HAULING
+        </h2>
+    </div>
+""", unsafe_allow_html=True)
+
+# 2. INFO BAR
+tgl_pilih = tgl_laporan.strftime("%Y-%m-%d")
+st.markdown(f"""
+    <div style="text-align: center; font-family: 'Share Tech Mono'; color: #ff0055; margin-top: 10px; letter-spacing: 2px; font-size: 18px;">
+        TANGGAL: <span style="color:white">{tgl_pilih}</span> &nbsp;|&nbsp; 
+        SHIFT: <span style="color:white">{shift}</span>
+    </div>
+""", unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 3. LOAD DATA & FILTERING
+try:
+    # Load data history dengan ttl=0 agar selalu REAL-TIME
+    df_report = conn.read(worksheet="HISTORICAL", ttl=0)
     
-    if st.button("🚀 SYNC ALL TO GOOGLE SHEETS"):
-        try:
-            with st.spinner("TRANSMITTING TO DEXTER SERVER..."):
-                
-                # 1. Siapkan data baru dari antrean HP
-                # Ubah ke String agar Google Sheets aman
-                df_new = pd.DataFrame(dex_queue).astype(str)
-                
-                try:
-                    # 2. Coba baca data lama di Cloud (HISTORICAL)
-                    # Python otomatis baca secrets.toml, jadi tidak perlu URL manual
-                    df_old = conn.read(worksheet="HISTORICAL")
-                    
-                    # 3. Gabungkan (Data Lama + Data Baru)
-                    df_final = pd.concat([df_old, df_new], ignore_index=True)
-                    
-                    # 4. Update ke Cloud
-                    conn.update(worksheet="HISTORICAL", data=df_final)
-                    
-                except Exception as e:
-                    # Fallback: Jika gagal baca (misal sheet kosong/baru dibuat)
-                    # Langsung tulis data baru saja
-                    conn.update(worksheet="HISTORICAL", data=df_new)
-                
-                # 5. BERSIHKAN MEMORI HP (Hanya jika sukses)
-                localS.deleteAll()
-                
-                # REVISI: Pakai emoji asli, bukan kode teks
-                st.toast("DATA SENT TO DEXTER CLOUD!", icon="🚀") 
-                st.success("✅ SYNC SUCCESSFUL! DATABASE UPDATED.")
-                
-                time.sleep(2)
-                st.rerun()
-                    
-        except Exception as e:
-            st.error(f"SYNC FAILED: {e}")
-else:
-    st.info("💡 SYSTEM STATUS: ALL DATA SYNCED. WAITING FOR INPUT...")
+    if not df_report.empty:
+        # === FORMAT TANGGAL ANTI-ERROR ===
+        df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce')
+        df_report = df_report.dropna(subset=['Tanggal'])
+        df_report['Tanggal'] = df_report['Tanggal'].dt.strftime('%Y-%m-%d')
+        
+        # === FILTER DATA ===
+        df_filtered = df_report[
+            (df_report['Tanggal'] == tgl_pilih) & 
+            (df_report['Shift'] == shift)
+        ].copy()
+        
+        # === STATUS LOGIC ===
+        def hitung_status(liter):
+            try:
+                liters = float(liter)
+                if liters > 15000: return "AMAN"
+                elif liters > 5000: return "CUKUP"
+                else: return "KURANG"
+            except: return "ERROR"
+
+        if not df_filtered.empty:
+            df_filtered['Status'] = df_filtered['Volume (L)'].apply(hitung_status)
+            
+            # Tampilkan Tabel
+            tabel_final = df_filtered[['Tanggal', 'Shift', 'Tangki', 'Tinggi (cm)', 'Volume (L)', 'Status']]
+            
+            st.dataframe(
+                tabel_final,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Volume (L)": st.column_config.NumberColumn("Volume (L)", format="%d L"),
+                    "Status": st.column_config.Column("Status Fuel", width="medium")
+                }
+            )
+            
+            # TOTAL RECAP
+            df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
+            total_fuel = df_filtered['Volume (L)'].sum()
+            
+            st.markdown(f"""
+                <div style="text-align: right; font-family: 'Orbitron'; color: #00f2ff; margin-top: 10px;">
+                    TOTAL STOCK FUEL: <span style="font-size: 24px; color: white;">{total_fuel:,.0f} LITER</span>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        else:
+            st.info("⚠️ BELUM ADA DATA UNTUK TANGGAL & SHIFT INI.")
+            
+    else:
+        st.warning("DATABASE MASIH KOSONG.")
+
+except Exception as e:
+    # Error handling senyap agar tampilan tetap rapi
+    st.info("Sedang memuat data laporan...")
 
 # Footer
 st.markdown("---")
-st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 12px;">DEXTER PROJECT v2.5 | PERSISTENT MODE</div>', unsafe_allow_html=True)
+st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 12px;">DEXTER PROJECT v3.0 | MACO HAULING</div>', unsafe_allow_html=True)
