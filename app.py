@@ -4,31 +4,83 @@ from streamlit_local_storage import LocalStorage
 import pandas as pd
 from datetime import datetime
 import time
+import os
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK
+# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL UI)
 # ==========================================
 st.set_page_config(page_title="TERRA FUEL MACO HAULING", page_icon="☢️", layout="wide")
 
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
-    .stApp { background-color: #050505; background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; }
-    h1 { font-family: 'Orbitron', sans-serif; color: #00f2ff !important; text-transform: uppercase; text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); letter-spacing: 3px; }
-    .caption-text { font-family: 'Share Tech Mono', monospace; color: #ff0055; letter-spacing: 2px; }
+    
+    /* BACKGROUND APP */
+    .stApp { 
+        background-color: #050505; 
+        background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), 
+                          linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); 
+        background-size: 30px 30px; 
+    }
+
+    /* JUDUL DI TENGAH (H1) */
+    h1 { 
+        font-family: 'Orbitron', sans-serif; 
+        color: #00f2ff !important; 
+        text-transform: uppercase; 
+        text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); 
+        letter-spacing: 3px; 
+        text-align: center !important; /* <--- INI KUNCINYA */
+        padding-top: 10px;
+        font-size: 40px !important;
+    }
+    
+    /* SUBJUDUL DI TENGAH */
+    .caption-text { 
+        font-family: 'Share Tech Mono', monospace; 
+        color: #ff0055; 
+        letter-spacing: 2px; 
+        text-align: center !important; /* <--- INI KUNCINYA */
+        margin-bottom: 20px;
+        display: block;
+    }
+
+    /* KONFIGURASI GAMBAR (ICON STYLE & GLOWING) */
+    div[data-testid="stImage"] img {
+        border: 2px solid #00f2ff !important;        /* Garis Tepi Neon */
+        border-radius: 15px !important;              /* Sudut Tumpul */
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); /* Efek Cahaya */
+        max-height: 250px !important;                /* Batasi Tinggi Biar Gak Raksasa */
+        object-fit: cover !important;                /* Crop kotak rapi */
+        transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animasi Halus */
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    /* EFEK HOVER (SAAT KURSOR ARAH KE GAMBAR) */
+    div[data-testid="stImage"] img:hover {
+        transform: scale(1.05); /* Zoom dikit */
+        box-shadow: 0 0 30px rgba(0, 242, 255, 0.9) !important; /* Nyala makin terang */
+        border-color: #fff !important;
+    }
+
+    /* METRIC & INPUT STYLES */
     div[data-testid="stMetric"] { background-color: rgba(10, 10, 15, 0.7) !important; border: 1px solid #00f2ff; border-radius: 0px; padding: 15px; box-shadow: 0 0 15px rgba(0, 242, 255, 0.1) inset; }
     div[data-testid="stMetricLabel"] { font-family: 'Share Tech Mono', monospace; color: #ff0055 !important; font-size: 14px; text-transform: uppercase; }
     div[data-testid="stMetricValue"] { font-family: 'Orbitron', sans-serif; color: #ffffff !important; text-shadow: 0 0 10px #00f2ff; font-size: 32px !important; }
     section[data-testid="stSidebar"] { background-color: #020202; border-right: 1px solid #333; }
     .stTextInput > div > div > input, .stSelectbox > div > div > div, .stNumberInput > div > div > input { background-color: #0f0f0f !important; color: #00f2ff !important; border: 1px solid #333; font-family: 'Share Tech Mono', monospace; }
     
-    /* Tombol Style */
+    /* TOMBOL STYLE */
     .stButton > button { width: 100%; background: linear-gradient(90deg, #00f2ff, #0055ff); border: none; color: black; font-family: 'Orbitron', sans-serif; font-weight: bold; padding: 10px; text-transform: uppercase; letter-spacing: 2px; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); transition: all 0.3s ease; }
     .stButton > button:hover { box-shadow: 0 0 20px #00f2ff; color: white; transform: scale(1.02); }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("☢️ DAILY REPORT FUEL MACO HAULING")
+# HAPUS st.title YANG LAMA
+# Ganti dengan HTML manual agar CSS text-align: center bekerja sempurna
+st.markdown("<h1>☢️ DAILY REPORT STOCK FUEL MACO HAULING</h1>", unsafe_allow_html=True)
 st.markdown('<p class="caption-text">Part of DEXTER PROJECT | MACO Hauling | PT Saptaindra Sejati</p>', unsafe_allow_html=True)
 
 # ==========================================
@@ -39,40 +91,47 @@ localS = LocalStorage()
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Ambil antrean data dari memori browser (jika ada)
-# dex_queue akan berisi list data yang belum sempat di-sync
 dex_queue = localS.getItem("dexter_historical_queue")
 if dex_queue is None:
     dex_queue = []
 
-SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw"
+# --- KONFIGURASI SPREADSHEET ---
+SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw" # ID Sheet Anda
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTER"
 HISTORICAL_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit"
 
 @st.cache_data(ttl=600)
 def load_master_data():
     try:
+        # Baca data MASTER dari CSV Google Sheets
         df = pd.read_csv(CSV_URL)
+        
+        # Bersihkan format angka (Ganti koma jadi titik jika ada)
         if 'Tinggi' in df.columns:
             df['Tinggi'] = pd.to_numeric(df['Tinggi'].astype(str).str.replace(',', '.'), errors='coerce')
         if 'Liter' in df.columns:
             df['Liter'] = pd.to_numeric(df['Liter'].astype(str).str.replace(',', '.'), errors='coerce')
+            
         return df.dropna(subset=['Tinggi', 'Liter'])
-    except:
+    except Exception as e:
+        st.error(f"GAGAL LOAD MASTER: {e}")
         return pd.DataFrame()
 
+# --- INI BARIS PENTING YANG BIKIN ERROR ---
+# Kita panggil fungsi di atas, lalu hasilnya disimpan ke variable 'df_master'
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : MAIN DASHBOARD INTERFACE (CENTER CONSOLE)
+# LANGKAH 3 : MAIN DASHBOARD INTERFACE (CENTER CONSOLE - ANTI CRASH)
 # ==========================================
 
 with st.sidebar:
     st.markdown("### 🖥️ SYSTEM STATUS")
     st.success("DEXTER ONLINE")
-    st.info(f"Connected to site: MACO")
+    st.info(f"Connected to site : MACO")
 
 # --- HEADER SECTION ---
-st.markdown('<p class="caption-text">SYSTEM OPERATIONAL: INPUT DATA SOUNDING</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text">APPS NAME: INPUT DATA SOUNDING</p>', unsafe_allow_html=True)
 
 # Grid Baris 1: Admin Info (Horizontal)
 c1, c2, c3 = st.columns(3)
@@ -99,7 +158,6 @@ with col_kiri:
     tangki_pilihan = st.selectbox("CHOOSE UNIT ID", daftar_tangki)
 
     # --- LOGIKA GAMBAR OTOMATIS (MAPPING) ---
-    # Masukkan semua daftar file gambar Anda di sini
     image_map = {
         "FT_57": "FT_57.jpeg",
         "FT_73": "FT_73.jpeg",
@@ -110,23 +168,34 @@ with col_kiri:
         "FT_84": "FT_84.jpeg",
         "FT_85": "FT_85.jpeg",
         "FT_87": "FT_87.jpeg",
-        "FT_88": "FT_88.jpeg",               
-        "PITSTOP_NORTH": "PITSTOP_NORTH",
-        "PITSTOP_KM39": "PITSTOP_KM39",
-        "PITSTOP_CENTRAL": "PITSTOP_CENTRAL",
-        # Tambahkan tangki lainnya di sini...
+        "FT_88": "FT_88.jpeg",              
+        # SAYA TAMBAHKAN .jpeg AGAR TIDAK ERROR (Cek file asli kamu ya!)
+        "PITSTOP_MIN_NORTH": "PITSTOP_NORTH.jpeg", 
+        "PITSTOP_KM39": "PITSTOP_KM39.jpeg",
+        "PITSTOP_MIN_CENTRAL": "PITSTOP_CENTRAL.jpeg",
     }
 
-    # Cek apakah unit ada di map gambar
+    # Variabel penampung status gambar
+    gambar_ditemukan = False
+    
+    # 1. Cek apakah nama tangki ada di daftar map?
     if tangki_pilihan in image_map:
-        # Gunakan use_container_width agar gambar pas dengan kolom
-        st.image(image_map[tangki_pilihan], caption=f"ACTIVE UNIT: {tangki_pilihan}", use_container_width=True)
-    else:
-        # Tampilkan kotak Neon hanya jika gambar tidak ditemukan
+        nama_file = image_map[tangki_pilihan]
+        
+        # 2. Cek apakah FILE FISIKNYA benar-benar ada di folder?
+        if os.path.exists(nama_file):
+            st.image(nama_file, caption=f"UNIT: {tangki_pilihan}", width=300)
+            gambar_ditemukan = True
+        else:
+            # File terdaftar di map, tapi fisiknya hilang
+            st.warning(f"⚠️ File '{nama_file}' hilang dari folder!")
+    
+    # Jika gambar tidak ditemukan (Entah karena tidak di map, atau file hilang)
+    if not gambar_ditemukan:
         st.markdown(f"""
-        <div style="border: 2px solid #ff0055; padding: 40px; text-align: center; background: rgba(255, 0, 85, 0.05);">
+        <div style="border: 2px solid #ff0055; padding: 30px; text-align: center; background: rgba(255, 0, 85, 0.05);">
             <p style="color: #ff0055; font-family: 'Share Tech Mono'; font-size: 20px;">⚠️ NO IMAGE DATA</p>
-            <p style="color: #555;">Please upload {tangki_pilihan}.jpg to repository</p>
+            <p style="color: #555; font-size: 12px;">Please upload photo for {tangki_pilihan}</p>
         </div>
         """, unsafe_allow_html=True)
 
