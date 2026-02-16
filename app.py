@@ -9,7 +9,6 @@ import os
 # ==========================================
 # LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (MOBILE FRIENDLY)
 # ==========================================
-# GANTI PAGE ICON JADI 📋
 st.set_page_config(page_title="TERRA FUEL MACO HAULING", page_icon="📋", layout="wide")
 
 st.markdown("""
@@ -32,7 +31,8 @@ st.markdown("""
         text-transform: uppercase; 
         text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); 
         text-align: center !important;
-        font-size: 40px !important; /* Besar di Laptop */
+        font-size: 35px !important; /* Disesuaikan agar muat di kotak */
+        margin: 0 !important; /* Reset margin agar rapi di dalam kotak */
     }
     
     h2 {
@@ -44,20 +44,32 @@ st.markdown("""
 
     /* Mobile (HP) Override */
     @media only screen and (max-width: 600px) {
-        h1 { font-size: 22px !important; margin-top: -20px; } /* Judul Atas Kecil */
-        h2 { font-size: 18px !important; } /* Judul Laporan Kecil */
+        h1 { font-size: 20px !important; } /* Judul Atas Kecil di HP */
+        h2 { font-size: 18px !important; } 
         .caption-text { font-size: 10px !important; }
         div[data-testid="stImage"] img { max-height: 180px !important; }
     }
     
-    /* SUBJUDUL */
+    /* --- BARU: KOTAK JUDUL UTAMA (HEADER) --- */
+    .title-box {
+        border: 2px solid #00f2ff;
+        background: rgba(0, 242, 255, 0.05);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 15px;
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+    }
+
+    /* --- REVISI: SUBJUDUL JADI HIJAU NEON --- */
     .caption-text { 
         font-family: 'Share Tech Mono', monospace; 
-        color: #ff0055; 
+        color: #00ff00 !important; /* WARNA HIJAU NEON */
         letter-spacing: 2px; 
         text-align: center !important;
         margin-bottom: 20px;
         display: block;
+        text-shadow: 0 0 8px rgba(0, 255, 0, 0.6); /* Glow Hijau */
     }
 
     /* KONFIGURASI GAMBAR (ICON STYLE & GLOWING) */
@@ -98,11 +110,67 @@ st.markdown("""
         font-weight: bold; 
         padding: 10px; 
     }
+    
+    /* ============================================================ */
+    /* --- CSS TABEL CYBERPUNK (SUDAH BENAR - JANGAN DIUBAH) --- */
+    /* ============================================================ */
+    .cyber-card {
+        background-color: rgba(10, 10, 10, 0.85);
+        border: 1px solid #00f2ff;
+        box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
+        padding: 15px;
+        border-radius: 12px;
+        margin-top: 20px;
+        color: #fff;
+    }
+    .cyber-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9em;
+        font-family: 'Share Tech Mono', monospace;
+        margin-top: 10px;
+    }
+    .cyber-table th {
+        border-bottom: 2px solid #00f2ff;
+        color: #00f2ff;
+        padding: 10px 5px;
+        text-align: left;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 0.85em;
+        letter-spacing: 1px;
+    }
+    .cyber-table td {
+        padding: 12px 5px;
+        border-bottom: 1px solid #333;
+        color: #eee;
+    }
+    .status-aman { color: #00ff00; text-shadow: 0 0 8px #00ff00; font-weight: bold; }
+    .status-cukup { color: #ffff00; font-weight: bold; }
+    .status-kurang { color: #ff0000; text-shadow: 0 0 8px #ff0000; font-weight: bold; }
+    .cyber-footer {
+        margin-top: 20px;
+        border-top: 1px dashed #444;
+        padding-top: 15px;
+        display: flex;             
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Orbitron', sans-serif;
+    }
+    .footer-label { font-size: 0.9em; color: #fff; }
+    .footer-value { font-size: 1.3em; color: #00f2ff; font-weight: 700; text-shadow: 0 0 10px #00f2ff; }
+
     </style>
     """, unsafe_allow_html=True)
 
-# GANTI ICON JUDUL JADI 📋
-st.markdown("<h1>📋 DAILY REPORT STOCK FUEL</h1>", unsafe_allow_html=True)
+
+# JUDUL APLIKASI UTAMA (DIBUNGKUS KOTAK NEON)
+st.markdown("""
+    <div class="title-box">
+        <h1>📋 DAILY REPORT STOCK FUEL</h1>
+    </div>
+""", unsafe_allow_html=True)
+
+# SUBJUDUL (OTOMATIS HIJAU KARENA CLASS .caption-text)
 st.markdown('<p class="caption-text">DEXTER PROJECT | MACO HAULING</p>', unsafe_allow_html=True)
 
 # ==========================================
@@ -268,13 +336,12 @@ if tombol_submit:
         st.warning("MOHON ISI SEMUA DATA.")
 
 # ==========================================
-# LANGKAH 5 : DAILY REPORT DASHBOARD (MOBILE COMPATIBLE)
+# LANGKAH 5 : DAILY REPORT DASHBOARD (FIXED HEADER & TABLE)
 # ==========================================
 st.markdown("---")
 st.markdown("<br>", unsafe_allow_html=True)
 
-# 1. HEADER LAPORAN (Font Size disesuaikan via CSS)
-# GANTI ICON JADI 📊 (GRAFIK) AGAR LEBIH COCOK UNTUK DATA
+# --- 1. HEADER (TETAP SEPERTI ASLINYA) ---
 st.markdown("""
     <div style="text-align: center; border: 2px solid #00f2ff; padding: 15px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
         <h2 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0; text-shadow: 0 0 10px #00f2ff;">
@@ -283,79 +350,87 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 2. INFO BAR (Tanggal & Shift tetap ditampilkan di sini agar jelas)
+# --- 2. INFO BAR TANGGAL (TETAP SEPERTI ASLINYA) ---
 tgl_pilih = tgl_laporan.strftime("%Y-%m-%d")
 st.markdown(f"""
     <div style="text-align: center; font-family: 'Share Tech Mono'; color: #ff0055; margin-top: 10px; letter-spacing: 2px; font-size: 14px;">
-        TGL: <span style="color:white">{tgl_pilih}</span> | 
+        TANGGAL: <span style="color:white">{tgl_pilih}</span> | 
         <span style="color:white">{shift}</span>
     </div>
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# 3. LOAD DATA & FILTERING
+# --- 3. TABEL CYBERPUNK (BAGIAN YANG DIUBAH) ---
 try:
     df_report = conn.read(worksheet="HISTORICAL", ttl=0)
     
     if not df_report.empty:
-        # Format Tanggal
-        df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce')
-        df_report = df_report.dropna(subset=['Tanggal'])
-        df_report['Tanggal'] = df_report['Tanggal'].dt.strftime('%Y-%m-%d')
-        
-        # Filter
+        # Format Tanggal & Filter
+        df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce').dt.strftime('%Y-%m-%d')
         df_filtered = df_report[
             (df_report['Tanggal'] == tgl_pilih) & 
             (df_report['Shift'] == shift)
         ].copy()
         
-        # Logika Status
-        def hitung_status(liter):
-            try:
-                liters = float(liter)
-                if liters > 15000: return "AMAN"
-                elif liters > 5000: return "CUKUP"
-                else: return "KURANG"
-            except: return "ERROR"
-
         if not df_filtered.empty:
-            df_filtered['Status'] = df_filtered['Volume (L)'].apply(hitung_status)
-            
-            # --- TAMPILAN TABEL DI HP (ICON BARU) ---
-            # Kolom Tanggal & Shift SUDAH DIHAPUS sesuai request
-            tabel_final = df_filtered[['Tangki', 'Tinggi (cm)', 'Volume (L)', 'Status']]
-            
-            st.dataframe(
-                tabel_final,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Tinggi (cm)": st.column_config.NumberColumn("Tinggi (cm)", format="%.1f cm"),
-                    "Volume (L)": st.column_config.NumberColumn("Volume (L)", format="%d L"),
-                    "Status": st.column_config.Column("Status", width="small")
-                }
-            )
-            
-            # TOTAL RECAP
+            # Hitung Total
             df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
             total_fuel = df_filtered['Volume (L)'].sum()
             
-            st.markdown(f"""
-                <div style="text-align: center; font-family: 'Orbitron'; color: #00f2ff; margin-top: 20px; border-top: 1px solid #333; padding-top:10px;">
-                    TOTAL STOCK FUEL: <span style="font-size: 24px; color: white;">{total_fuel:,.0f} LITER</span>
-                </div>
-            """, unsafe_allow_html=True)
+            # --- KONSTRUKSI HTML TABEL ---
+            # String dibuat satu baris panjang atau rata kiri agar TIDAK BOCOR
+            rows_html = ""
+            for idx, row in df_filtered.iterrows():
+                vol = float(row['Volume (L)'])
+                tinggi = float(row['Tinggi (cm)'])
+                
+                # Warna Status
+                if vol > 15000:
+                    status_cls = "status-aman"
+                    status_txt = "AMAN"
+                elif vol > 5000:
+                    status_cls = "status-cukup"
+                    status_txt = "CUKUP"
+                else:
+                    status_cls = "status-kurang"
+                    status_txt = "KURANG"
+                
+                # RAKIT BARIS HTML (JANGAN DI-ENTER/INDENTASI DI DALAM STRING)
+                rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
+
+            # RAKIT WADAH UTAMA (Pastikan tag HTML nempel di kiri)
+            final_table_html = f"""
+<div class="cyber-card">
+<table class="cyber-table">
+<thead>
+<tr><th>TANGKI</th><th>TINGGI</th><th>VOLUME</th><th>STATUS</th></tr>
+</thead>
+<tbody>{rows_html}</tbody>
+</table>
+<div class="cyber-footer">
+<span class="footer-label">TOTAL STOCK FUEL:</span>
+<span class="footer-value">{total_fuel:,.0f} LITER</span>
+</div>
+</div>
+"""
+            # Render Tabel
+            st.markdown(final_table_html, unsafe_allow_html=True)
             
+            # Tombol Refresh
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔄 REFRESH REPORT"):
+                st.cache_data.clear()
+                st.rerun()
+
         else:
-            st.info("⚠️ BELUM ADA DATA.")
-            
+            st.info("⚠️ BELUM ADA DATA HARI INI.")
     else:
         st.warning("DATABASE KOSONG.")
 
 except Exception as e:
-    st.info("Memuat laporan...")
+    st.info("Menghubungkan database...")
 
 # Footer
 st.markdown("---")
-st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">DEXTER PROJECT v3.1 MOBILE | MACO HAULING</div>', unsafe_allow_html=True)
+st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">DEXTER PROJECT v3.2 FIXED | MACO HAULING</div>', unsafe_allow_html=True)
