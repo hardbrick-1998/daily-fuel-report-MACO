@@ -63,34 +63,73 @@ def load_master_data():
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : INPUT INTERFACE (DENGAN KALENDER MANUAL)
+# LANGKAH 3 : MAIN DASHBOARD INTERFACE (CENTER CONSOLE)
 # ==========================================
+
 with st.sidebar:
-    st.markdown("### 🧬 INPUT PARAMETERS")
-    admin_nama = st.text_input("Nama Anda", placeholder="Masukan Nama...")
+    st.markdown("### 🖥️ SYSTEM STATUS")
+    st.success("DEXTER ONLINE")
+    st.info(f"Connected to site: MACO")
+
+# --- HEADER SECTION ---
+st.markdown('<p class="caption-text">SYSTEM OPERATIONAL: INPUT DATA SOUNDING</p>', unsafe_allow_html=True)
+
+# Grid Baris 1: Admin Info (Horizontal)
+c1, c2, c3 = st.columns(3)
+with c1:
+    admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Enter name...")
+with c2:
+    tgl_laporan = st.date_input("📅 REPORT DATE", datetime.now())
+with c3:
+    shift = st.selectbox("⏱️ SHIFT", ["Shift 1 (DAY)", "Shift 2 (NIGHT)"])
+
+st.markdown("---")
+
+# Grid Baris 2: Pemilihan Unit & Sounding
+col_kiri, col_kanan = st.columns([1.5, 1])
+
+with col_kiri:
+    st.markdown("### 🚛 PILIH TANGKI")
     
-    # --- [BARU] FITUR TANGGAL MANUAL ---
-    # Default-nya adalah hari ini (datetime.now)
-    # Tapi admin bisa klik dan pilih tanggal kemarin/lusa
-    tgl_laporan = st.date_input("TANGGAL LAPORAN", datetime.now())
-    # -----------------------------------
-    
-    shift = st.selectbox("Shift Berapa", ["Shift 1 (DAY)", "Shift 2 (NIGHT)"])
-    
-    st.markdown("---")
-    
-    # LOGIKA PILIHAN TANGKI OTOMATIS
     if not df_master.empty and 'Tank' in df_master.columns:
         daftar_tangki = sorted(df_master['Tank'].dropna().unique().tolist())
     else:
-        daftar_tangki = ["GAGAL LOAD MASTER"]
-    
-    tangki_pilihan = st.selectbox("Pilih Tangki", daftar_tangki)
-    
-    tinggi_cm = st.number_input("Tinggi Sounding (CM)", min_value=0.0, step=0.1, format="%.2f")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    tombol_submit = st.button("KIRIM DATA KE LOKAL")
+        daftar_tangki = ["DATABASE_ERROR"]
+
+    tangki_pilihan = st.selectbox("CHOOSE UNIT ID", daftar_tangki)
+
+    # --- LOGIKA GAMBAR OTOMATIS (MAPPING) ---
+    # Masukkan semua daftar file gambar Anda di sini
+    image_map = {
+        "FT_57": "FT_83.jpg",
+        "FT_73": "FT_84.jpg",
+        # Tambahkan tangki lainnya di sini...
+    }
+
+    # Cek apakah unit ada di map gambar
+    if tangki_pilihan in image_map:
+        # Gunakan use_container_width agar gambar pas dengan kolom
+        st.image(image_map[tangki_pilihan], caption=f"ACTIVE UNIT: {tangki_pilihan}", use_container_width=True)
+    else:
+        # Tampilkan kotak Neon hanya jika gambar tidak ditemukan
+        st.markdown(f"""
+        <div style="border: 2px solid #ff0055; padding: 40px; text-align: center; background: rgba(255, 0, 85, 0.05);">
+            <p style="color: #ff0055; font-family: 'Share Tech Mono'; font-size: 20px;">⚠️ NO IMAGE DATA</p>
+            <p style="color: #555;">Please upload {tangki_pilihan}.jpg to repository</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+with col_kanan:
+    st.markdown("### 📏 MEASUREMENT")
+    # Membungkus input dalam container bergaya Cyberpunk
+    with st.container():
+        tinggi_cm = st.number_input("DEPTH (CM)", min_value=0.0, step=0.1, format="%.2f")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        # Tambahkan instruksi singkat
+        st.info("Pastikan tongkat sounding menyentuh dasar tangki.")
+        
+        tombol_submit = st.button("🔌 LOCK TO LOCAL STORAGE")
 
 # ==========================================
 # LANGKAH 4 : LOGIKA LOCK DATA (LOCAL STORAGE)
@@ -98,24 +137,18 @@ with st.sidebar:
 
 if tombol_submit:
     if tinggi_cm > 0 and admin_nama:
+        # Cari volume berdasarkan master
         df_tangki = df_master[df_master['Tank'] == tangki_pilihan]
         if not df_tangki.empty:
             idx = (df_tangki['Tinggi'] - tinggi_cm).abs().idxmin()
             volume_hasil = df_tangki.loc[idx, 'Liter']
             
-            # Tampilkan Preview
-            st.markdown("---")
-            col1, col2, col3 = st.columns(3)
-            col1.metric("OPERATOR", admin_nama)
-            # Tampilkan tanggal yang dipilih user agar yakin
-            col2.metric("TANGGAL", tgl_laporan.strftime("%d-%m-%Y")) 
-            col3.metric("VOLUME", f"{volume_hasil:,.0f} L")
+            # Tampilkan Hasil Kalkulasi Besar (Main Area)
+            st.success(f"CALCULATION COMPLETE: {volume_hasil:,.0f} LITERS")
             
-            # LOCK DATA KE MEMORI HP
+            # SIMPAN KE LOCAL STORAGE
             new_data = {
                 "Nama": admin_nama,
-                # REVISI: Gunakan tanggal manual pilihan user
-                # Format kita ubah jadi YYYY-MM-DD (Standar Internasional)
                 "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
                 "Shift": shift,
                 "Tangki": tangki_pilihan,
@@ -125,13 +158,13 @@ if tombol_submit:
             dex_queue.append(new_data)
             localS.setItem("dexter_historical_queue", dex_queue)
             
-            st.toast("🔒 DATA LOCKED IN DEVICE STORAGE!", icon="💾")
+            st.toast("DATA LOCKED!", icon="🚀")
             time.sleep(1)
             st.rerun() 
         else:
-            st.warning("UNIT NOT FOUND.")
+            st.error("ERROR: UNIT NOT FOUND IN DATABASE.")
     else:
-        st.warning("ISI NAMA DAN DATA SOUNDING.")
+        st.warning("PLEASE COMPLETE ALL FIELDS.")
 
 # ==========================================
 # LANGKAH 5 : SYNC MONITORING (FINAL & FIXED)
