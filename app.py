@@ -138,9 +138,9 @@ c1, c2, c3 = st.columns(3)
 with c1:
     admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Enter name...")
 with c2:
-    tgl_laporan = st.date_input("📅 REPORT DATE", datetime.now())
+    tgl_laporan = st.date_input("📅 TANGGAL", datetime.now())
 with c3:
-    shift = st.selectbox("⏱️ SHIFT", ["Shift 1 (DAY)", "Shift 2 (NIGHT)"])
+    shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
 
 st.markdown("---")
 
@@ -200,16 +200,16 @@ with col_kiri:
         """, unsafe_allow_html=True)
 
 with col_kanan:
-    st.markdown("### 📏 MEASUREMENT")
+    st.markdown("### 📏 SOUNDING")
     # Membungkus input dalam container bergaya Cyberpunk
     with st.container():
         tinggi_cm = st.number_input("DEPTH (CM)", min_value=0.0, step=0.1, format="%.2f")
         
         st.markdown("<br>", unsafe_allow_html=True)
         # Tambahkan instruksi singkat
-        st.info("Pastikan tongkat sounding menyentuh dasar tangki.")
+        st.info("Silahkan Input tinggi sounding disini.")
         
-        tombol_submit = st.button("🔌 LOCK TO LOCAL STORAGE")
+        tombol_submit = st.button("🔌 KIRIM UNTUK DI SCREENSHOT")
 
 # ==========================================
 # LANGKAH 4 : LOGIKA LOCK DATA (LOCAL STORAGE)
