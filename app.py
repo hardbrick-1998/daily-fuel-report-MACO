@@ -101,9 +101,19 @@ with col_kiri:
     # --- LOGIKA GAMBAR OTOMATIS (MAPPING) ---
     # Masukkan semua daftar file gambar Anda di sini
     image_map = {
+        "FT_57": "FT_57.jpeg",
+        "FT_73": "FT_73.jpeg",
+        "FT_74": "FT_74.jpeg",
+        "FT_81": "FT_81.jpeg",
+        "FT_82": "FT_82.jpeg", 
         "FT_83": "FT_83.jpeg",
         "FT_84": "FT_84.jpeg",
-        "FT_74": "FT_74.jpeg",
+        "FT_85": "FT_85.jpeg",
+        "FT_87": "FT_87.jpeg",
+        "FT_88": "FT_88.jpeg",               
+        "PITSTOP_NORTH": "PITSTOP_NORTH",
+        "PITSTOP_KM39": "PITSTOP_KM39",
+        "PITSTOP_CENTRAL": "PITSTOP_CENTRAL",
         # Tambahkan tangki lainnya di sini...
     }
 
