@@ -7,7 +7,7 @@ import time
 import os
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FULL FEATURE UPDATE)
+# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL FIX ICON)
 # ==========================================
 st.set_page_config(page_title="TERRA FUEL MACO HAULING", page_icon="📋", layout="wide")
 
@@ -15,15 +15,34 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
     
-    /* BACKGROUND APP */
+    /* --- 1. FORCE BACKGROUND GELAP (MAIN & SIDEBAR) --- */
     .stApp { 
-        background-color: #050505; 
+        background-color: #050505 !important; 
         background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), 
                           linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px); 
         background-size: 30px 30px; 
     }
+    
+    [data-testid="stSidebar"] {
+        background-color: #020202 !important;
+        border-right: 1px solid #00f2ff;
+    }
+    
+    /* REVISI DI SINI: Kita persempit targetnya supaya IKON tidak rusak */
+    /* Target Header & Paragraf Saja */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] p, .stMarkdown label, .stMarkdown p {
+        color: #e0e0e0 !important;
+        font-family: 'Orbitron', sans-serif !important;
+    }
+    
+    /* Perbaiki warna teks Expander di Sidebar tanpa merusak ikon */
+    [data-testid="stSidebar"] .streamlit-expanderHeader {
+        color: #e0e0e0 !important;
+        font-family: 'Orbitron', sans-serif !important;
+    }
 
-    /* TYPOGRAPHY */
+    /* --- 2. TYPOGRAPHY UTAMA --- */
     h1 { 
         font-family: 'Orbitron', sans-serif; color: #00f2ff !important; text-transform: uppercase; 
         text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); text-align: center !important;
@@ -31,36 +50,33 @@ st.markdown("""
     }
     h2 { font-family: 'Orbitron', sans-serif; color: #00f2ff !important; text-shadow: 0 0 10px #00f2ff; font-size: 30px !important; }
     
-    /* TITLE BOX */
     .title-box {
         border: 2px solid #00f2ff; background: rgba(0, 242, 255, 0.05);
         padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 15px;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
     }
 
-    /* SUBJUDUL (HIJAU NEON) */
     .caption-text { 
         font-family: 'Share Tech Mono', monospace; color: #00ff00 !important;
         letter-spacing: 2px; text-align: center !important; margin-bottom: 20px; display: block;
         text-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
     }
 
-    /* GAMBAR */
+    /* --- 3. GAMBAR & INPUT --- */
     div[data-testid="stImage"] img {
         border: 2px solid #00f2ff !important; border-radius: 15px !important;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); max-height: 250px; object-fit: cover !important;
         display: block; margin-left: auto; margin-right: auto;
     }
 
-    /* INPUT STYLES */
-    .stTextInput > div > div > input, .stSelectbox > div > div > div, .stNumberInput > div > div > input { 
+    .stTextInput > div > div > input, .stSelectbox > div > div > div, 
+    .stNumberInput > div > div > input, .stDateInput > div > div > input { 
         background-color: #0f0f0f !important; color: #00f2ff !important; 
-        border: 1px solid #333; font-family: 'Share Tech Mono', monospace; 
+        border: 1px solid #333 !important; font-family: 'Share Tech Mono', monospace !important; 
     }
+    div[data-baseweb="select"] > div, div[data-baseweb="popover"] { background-color: #0f0f0f !important; color: #00f2ff !important; }
 
-    /* --- UPDATE TOMBOL KHUSUS (HIJAU & BIRU) --- */
-    
-    /* Tombol Secondary (CEK STOCK) - HIJAU */
+    /* --- 4. TOMBOL (HIJAU & BIRU) --- */
     button[kind="secondary"] {
         width: 100%; background: linear-gradient(90deg, #00ff00, #008800) !important; 
         border: none !important; color: black !important; font-family: 'Orbitron', sans-serif !important; 
@@ -69,7 +85,6 @@ st.markdown("""
     }
     button[kind="secondary"]:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 255, 0, 0.8); }
 
-    /* Tombol Primary (KIRIM LAPORAN) - BIRU */
     button[kind="primary"] {
         width: 100%; background: linear-gradient(90deg, #00f2ff, #0055ff) !important; 
         border: none !important; color: black !important; font-family: 'Orbitron', sans-serif !important; 
@@ -78,16 +93,11 @@ st.markdown("""
     }
     button[kind="primary"]:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 242, 255, 0.8); }
 
-    /* --- RESULT CARD (KARTU HASIL KONVERSI) --- */
+    /* --- 5. RESULT CARD --- */
     .result-card {
-        background-color: rgba(0, 20, 0, 0.9); /* Hijau Gelap */
-        border: 2px solid #00ff00;
-        box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
-        padding: 20px;
-        border-radius: 12px;
-        margin-top: 20px;
-        text-align: center;
-        animation: fadeIn 0.5s;
+        background-color: rgba(0, 20, 0, 0.9); border: 2px solid #00ff00;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); padding: 20px; border-radius: 12px;
+        margin-top: 20px; text-align: center; animation: fadeIn 0.5s;
     }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -95,38 +105,21 @@ st.markdown("""
     .result-value { font-family: 'Orbitron'; color: #fff; font-size: 2.2em; font-weight: 700; text-shadow: 0 0 15px #00ff00; margin-bottom: 0; }
     .result-status { font-family: 'Orbitron'; font-size: 1.0em; font-weight: bold; margin-top: 5px; }
     
-    /* ============================================================ */
-    /* --- CSS TABEL CYBERPUNK (STATUS GLOWING FIX) --- */
-    /* ============================================================ */
+    /* --- 6. TABEL CYBERPUNK --- */
     .cyber-card {
         background-color: rgba(10, 10, 10, 0.85); border: 1px solid #00f2ff;
         box-shadow: 0 0 20px rgba(0, 242, 255, 0.15); padding: 15px; border-radius: 12px;
         margin-top: 20px; color: #fff;
     }
-    
-    .cyber-table {
-        width: 100%; border-collapse: collapse; font-size: 0.9em; 
-        font-family: 'Share Tech Mono', monospace; margin-top: 10px;
-    }
-    
-    /* ANTI WRAP */
+    .cyber-table { width: 100%; border-collapse: collapse; font-size: 0.9em; font-family: 'Share Tech Mono', monospace; margin-top: 10px; }
     .cyber-table th, .cyber-table td { white-space: nowrap; }
+    .cyber-table th { border-bottom: 2px solid #00f2ff; color: #00f2ff; padding: 10px 5px; text-align: left; font-family: 'Orbitron', sans-serif; font-size: 0.85em; letter-spacing: 1px; }
+    .cyber-table td { padding: 12px 5px; border-bottom: 1px solid #333; color: #eee; }
 
-    .cyber-table th {
-        border-bottom: 2px solid #00f2ff; color: #00f2ff; padding: 10px 5px;
-        text-align: left; font-family: 'Orbitron', sans-serif; font-size: 0.85em; letter-spacing: 1px;
-    }
-    
-    .cyber-table td {
-        padding: 12px 5px; border-bottom: 1px solid #333; color: #eee;
-    }
-
-    /* STATUS WARNA & EFEK LAMPU */
     .status-aman { color: #00ff00 !important; text-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00 !important; font-weight: bold; }
     .status-cukup { color: #ffff00 !important; text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00 !important; font-weight: bold; }
     .status-kurang { color: #ff0044 !important; text-shadow: 0 0 10px #ff0044, 0 0 20px #ff0044 !important; font-weight: bold; }
 
-    /* FOOTER */
     .cyber-footer {
         margin-top: 20px; border-top: 1px dashed #444; padding-top: 15px;
         display: flex; justify-content: space-between; align-items: center; font-family: 'Orbitron', sans-serif;
@@ -134,10 +127,22 @@ st.markdown("""
     .footer-label { font-size: 0.9em; color: #fff; }
     .footer-value { font-size: 1.3em; color: #00f2ff; font-weight: 700; text-shadow: 0 0 10px #00f2ff; }
 
-    /* MEDIA QUERY HP */
+    /* --- 7. TAB STYLING --- */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: transparent; border-bottom: 1px solid #333; }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px; background-color: #0a0a0a; border-radius: 5px 5px 0 0; color: #555;
+        font-family: 'Orbitron', sans-serif; font-size: 14px; border: 1px solid transparent;
+    }
+    .stTabs [data-baseweb="tab"]:hover { color: #00f2ff; background-color: #111; }
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(0, 242, 255, 0.1) !important; color: #00f2ff !important;
+        border: 1px solid #00f2ff !important; border-bottom: none !important; box-shadow: 0 -5px 15px rgba(0, 242, 255, 0.2);
+    }
+    .stTabs [data-baseweb="tab-highlight"] { background-color: #00f2ff; }
+
+    /* HP RESPONSIVE */
     @media only screen and (max-width: 600px) {
-        h1 { font-size: 20px !important; } 
-        h2 { font-size: 18px !important; } 
+        h1 { font-size: 20px !important; } h2 { font-size: 18px !important; } 
         .caption-text { font-size: 10px !important; }
         div[data-testid="stImage"] img { max-height: 180px !important; }
         .cyber-table { font-size: 0.75em !important; }
@@ -149,327 +154,278 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# JUDUL & SUBJUDUL
-st.markdown("""<div class="title-box"><h1>📋 TERRA DIGITAL FUEL MACO</h1></div>""", unsafe_allow_html=True)
-st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO HAULING</p>', unsafe_allow_html=True)
-
 # ==========================================
-# LANGKAH 2 : INITIALIZE LOCAL STORAGE & AUTO-SYNC CHECK
+# LANGKAH 2 : INISIALISASI & SYNC
 # ==========================================
 localS = LocalStorage()
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# --- KONFIGURASI SPREADSHEET ---
-SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw" # ID Sheet Anda
+SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTER"
 
-# 1. AMBIL DATA PENDING
-dex_queue = localS.getItem("dexter_historical_queue")
-if dex_queue is None:
-    dex_queue = []
-
-# 2. PROSES AUTO-SYNC (BACKGROUND)
+# Auto Sync
+dex_queue = localS.getItem("dexter_historical_queue") or []
 if len(dex_queue) > 0:
     try:
         df_new = pd.DataFrame(dex_queue).astype(str)
-        df_old = conn.read(worksheet="HISTORICAL", ttl=0)
         try:
+            df_old = conn.read(worksheet="HISTORICAL", ttl=0)
             df_final = pd.concat([df_old, df_new], ignore_index=True)
             conn.update(worksheet="HISTORICAL", data=df_final)
         except:
             conn.update(worksheet="HISTORICAL", data=df_new)
-        
         localS.deleteAll()
-        dex_queue = [] 
         st.toast("♻️ DATA PENDING TERKIRIM!", icon="✅")
     except Exception as e:
         st.toast(f"⚠️ OFFLINE: {len(dex_queue)} Data di HP", icon="💾")
 
-# 3. LOAD MASTER DATA
+# Load Master
 @st.cache_data(ttl=600)
 def load_master_data():
     try:
         df = pd.read_csv(CSV_URL)
-        if 'Tinggi' in df.columns:
-            df['Tinggi'] = pd.to_numeric(df['Tinggi'].astype(str).str.replace(',', '.'), errors='coerce')
-        if 'Liter' in df.columns:
-            df['Liter'] = pd.to_numeric(df['Liter'].astype(str).str.replace(',', '.'), errors='coerce')
+        if 'Tinggi' in df.columns: df['Tinggi'] = pd.to_numeric(df['Tinggi'].astype(str).str.replace(',', '.'), errors='coerce')
+        if 'Liter' in df.columns: df['Liter'] = pd.to_numeric(df['Liter'].astype(str).str.replace(',', '.'), errors='coerce')
         return df.dropna(subset=['Tinggi', 'Liter'])
-    except Exception as e:
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : MAIN DASHBOARD INTERFACE
+# HEADER UTAMA (GLOBAL)
 # ==========================================
-
 with st.sidebar:
     st.markdown("### 🖥️ SYSTEM STATUS")
     st.success("DEXTER ONLINE")
     st.info(f"Connected to site : MACO")
 
-# --- HEADER SECTION ---
-st.markdown('<p class="caption-text">APPS NAME: DATA SOUNDING FUEL</p>', unsafe_allow_html=True)
-
-# Grid Baris 1: Admin Info
-c1, c2, c3 = st.columns(3)
-with c1:
-    admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Nama...")
-with c2:
-    tgl_laporan = st.date_input("📅 TANGGAL", datetime.now())
-with c3:
-    shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
-
-st.markdown("---")
-
-# Grid Baris 2: Pemilihan Unit & Sounding
-col_kiri, col_kanan = st.columns([1.5, 1])
-
-with col_kiri:
-    st.markdown("### 🚛 TANGKI")
-    
-    if not df_master.empty and 'Tank' in df_master.columns:
-        daftar_tangki = sorted(df_master['Tank'].dropna().unique().tolist())
-    else:
-        daftar_tangki = ["DATABASE_ERROR"]
-
-    tangki_pilihan = st.selectbox("SILAHKAN PILIH TANGKI", daftar_tangki)
-
-    image_map = {
-        "FT_57": "FT_57.jpeg", "FT_73": "FT_73.jpeg", "FT_74": "FT_74.jpeg",
-        "FT_81": "FT_81.jpeg", "FT_82": "FT_82.jpeg", "FT_83": "FT_83.jpeg",
-        "FT_84": "FT_84.jpeg", "FT_85": "FT_85.jpeg", "FT_87": "FT_87.jpeg",
-        "FT_88": "FT_88.jpeg",              
-        "PITSTOP_MIN_NORTH": "PITSTOP_NORTH.jpeg", 
-        "PITSTOP_KM39": "PITSTOP_KM39.jpeg", 
-        "PITSTOP_MIN_CENTRAL": "PITSTOP_CENTRAL.jpeg",
-    }
-
-    gambar_ditemukan = False
-    if tangki_pilihan in image_map:
-        nama_file = image_map[tangki_pilihan]
-        if os.path.exists(nama_file):
-            st.image(nama_file, caption=f"UNIT: {tangki_pilihan}", width=300)
-            gambar_ditemukan = True
-    
-    if not gambar_ditemukan:
-        st.markdown(f"""
-        <div style="border: 2px solid #ff0055; padding: 20px; text-align: center; background: rgba(255, 0, 85, 0.05);">
-            <p style="color: #ff0055; font-family: 'Share Tech Mono'; font-size: 14px;">⚠️ NO IMAGE DATA</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-with col_kanan:
-    st.markdown("### 📏 SOUNDING")
-    with st.container():
-        tinggi_cm = st.number_input("SILAHKAN ISI ANGKA SOUNDINGAN (CM)", min_value=0.0, step=0.1, format="%.2f")
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # --- UPDATE: DUA TOMBOL (CEK & KIRIM) ---
-        c_btn1, c_btn2 = st.columns(2)
-        with c_btn1:
-            # Tombol Hijau (Secondary)
-            tombol_cek = st.button("🔍 CEK STOCK", type="secondary")
-        with c_btn2:
-            # Tombol Biru (Primary)
-            tombol_submit = st.button("🔌 KIRIM LAPORAN", type="primary")
-
-        # Placeholder untuk Kartu Hasil (Muncul setelah tombol diklik)
-        result_placeholder = st.empty()
+st.markdown("""<div class="title-box"><h1>📋 TERRA DIGITAL FUEL MACO</h1></div>""", unsafe_allow_html=True)
+st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO HAULING</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-top: -15px;">APPS NAME: DATA SOUNDING FUEL</p>', unsafe_allow_html=True)
 
 # ==========================================
-# LANGKAH 4 : LOGIKA HITUNG, KARTU, & SIMPAN
+# KONFIGURASI TABS (INPUT vs DASHBOARD)
 # ==========================================
+tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD ANALYTICS"])
 
-# Fungsi Bantu Hitung Volume
-def hitung_volume_solar(tank_id, depth_val):
-    if df_master.empty: return None
-    df_tangki = df_master[df_master['Tank'] == tank_id]
-    if df_tangki.empty: return None
-    # Cari nilai terdekat di tabel sounding
-    idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
-    return df_tangki.loc[idx, 'Liter']
+# Variabel global untuk filter (agar bisa dibaca fitur hapus di sidebar)
+df_filtered = pd.DataFrame()
 
-# Logika Utama (Jalan jika SALAH SATU tombol ditekan)
-if tombol_cek or tombol_submit:
-    if tinggi_cm >= 0:
-        volume_hasil = hitung_volume_solar(tangki_pilihan, tinggi_cm)
+# ============================================================
+# ISI TAB 1 : INPUT DATA & LAPORAN HARIAN
+# ============================================================
+with tab_input:
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 1. FORM INPUT
+    c1, c2, c3 = st.columns(3)
+    with c1: admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Nama...")
+    with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now())
+    with c3: shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
+
+    st.markdown("---")
+
+    col_kiri, col_kanan = st.columns([1.5, 1])
+
+    with col_kiri:
+        st.markdown("### 🚛 TANGKI")
+        if not df_master.empty and 'Tank' in df_master.columns:
+            daftar_tangki = sorted(df_master['Tank'].dropna().unique().tolist())
+        else: daftar_tangki = ["DATABASE_ERROR"]
+
+        tangki_pilihan = st.selectbox("SILAHKAN PILIH TANGKI", daftar_tangki)
+
+        image_map = {
+            "FT_57": "FT_57.jpeg", "FT_73": "FT_73.jpeg", "FT_74": "FT_74.jpeg",
+            "FT_81": "FT_81.jpeg", "FT_82": "FT_82.jpeg", "FT_83": "FT_83.jpeg",
+            "FT_84": "FT_84.jpeg", "FT_85": "FT_85.jpeg", "FT_87": "FT_87.jpeg",
+            "FT_88": "FT_88.jpeg", "PITSTOP_MIN_NORTH": "PITSTOP_NORTH.jpeg", 
+            "PITSTOP_KM39": "PITSTOP_KM39.jpeg", "PITSTOP_MIN_CENTRAL": "PITSTOP_CENTRAL.jpeg",
+        }
         
-        if volume_hasil is not None:
-            # Tentukan Warna & Status untuk Kartu
-            if volume_hasil > 15000:
-                status_txt = "AMAN"
-                color_hex = "#00ff00" # Hijau
-            elif volume_hasil > 5000:
-                status_txt = "CUKUP"
-                color_hex = "#ffff00" # Kuning
-            else:
-                status_txt = "KURANG"
-                color_hex = "#ff0044" # Merah
-
-            # --- TAMPILKAN KARTU HASIL (RESULT CARD) ---
-            # CSS .result-card sudah ada di Langkah 1
-            result_placeholder.markdown(f"""
-            <div class="result-card">
-                <div class="result-title">ESTIMASI VOLUME FUEL</div>
-                <div class="result-value">{volume_hasil:,.0f} L</div>
-                <div class="result-status" style="color: {color_hex}; text-shadow: 0 0 15px {color_hex};">
-                    STATUS: {status_txt}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # --- JIKA YANG DITEKAN TOMBOL KIRIM, LANJUT SIMPAN KE DB ---
-            if tombol_submit:
-                if admin_nama:
-                    new_record = {
-                        "Nama": admin_nama,
-                        "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
-                        "Shift": shift,
-                        "Tangki": tangki_pilihan,
-                        "Tinggi (cm)": tinggi_cm,
-                        "Volume (L)": volume_hasil
-                    }
-                    
-                    with st.spinner("Mengirim ke Server..."):
-                        try:
-                            # COBA ONLINE
-                            df_old = conn.read(worksheet="HISTORICAL", ttl=0)
-                            df_new_row = pd.DataFrame([new_record]).astype(str)
-                            df_final = pd.concat([df_old, df_new_row], ignore_index=True)
-                            conn.update(worksheet="HISTORICAL", data=df_final)
-                            
-                            if len(dex_queue) > 0: localS.deleteAll()
-                            st.toast("SUKSES: DATA TERKIRIM!", icon="🚀")
-                        
-                        except Exception as e:
-                            # JIKA OFFLINE
-                            dex_queue.append(new_record)
-                            localS.setItem("dexter_historical_queue", dex_queue)
-                            st.toast("OFFLINE: Data disimpan di HP", icon="💾")
-                    
-                    time.sleep(1.5)
-                    st.rerun()
-                else:
-                    st.warning("⚠️ MOHON ISI NAMA ADMIN UNTUK LAPORAN.")
+        if tangki_pilihan in image_map and os.path.exists(image_map[tangki_pilihan]):
+            st.image(image_map[tangki_pilihan], caption=f"UNIT: {tangki_pilihan}", width=300)
         else:
-            st.error("DATA TANGKI TIDAK DITEMUKAN DI MASTER.")
-    else:
-        st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
+            st.markdown('<div style="border: 2px solid #ff0055; padding: 20px; text-align: center; background: rgba(255, 0, 85, 0.05);"><p style="color: #ff0055; font-family: Share Tech Mono;">⚠️ NO IMAGE DATA</p></div>', unsafe_allow_html=True)
 
-# ==========================================
-# LANGKAH 5 : DAILY REPORT DASHBOARD (FIXED SHIFT FILTER)
-# ==========================================
-st.markdown("---")
-st.markdown("<br>", unsafe_allow_html=True)
-
-# --- HEADER LAPORAN ---
-st.markdown("""
-    <div style="text-align: center; border: 2px solid #00f2ff; padding: 15px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
-        <h2 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0; text-shadow: 0 0 10px #00f2ff;">
-            📊 LAPORAN STOCK FUEL MACO
-        </h2>
-    </div>
-""", unsafe_allow_html=True)
-
-# --- INFO TANGGAL & SHIFT TERPILIH ---
-tgl_pilih = tgl_laporan.strftime("%Y-%m-%d")
-st.markdown(f"""
-    <div style="text-align: center; font-family: 'Share Tech Mono'; color: #00ff00; margin-top: 10px; letter-spacing: 2px; font-size: 14px; text-shadow: 0 0 5px #00ff00;">
-        TANGGAL: <span style="color:white">{tgl_pilih}</span> | 
-        <span style="color:white">{shift}</span>
-    </div>
-""", unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# --- TABEL DATA ---
-try:
-    df_report = conn.read(worksheet="HISTORICAL", ttl=0)
-    
-    if not df_report.empty:
-        # 1. Standarisasi Format Tanggal
-        df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce').dt.strftime('%Y-%m-%d')
-        
-        # 2. Standarisasi Format Shift (PENTING: Ubah ke string & hapus spasi biar filter akurat)
-        df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
-        shift_selected = str(shift).strip()
-        
-        # 3. PROSES FILTERING (Hanya TANGGAL terpilih DAN SHIFT terpilih)
-        df_filtered = df_report[
-            (df_report['Tanggal'] == tgl_pilih) & 
-            (df_report['Shift'] == shift_selected)
-        ].copy()
-        
-        if not df_filtered.empty:
-            # Hitung Total (Otomatis hanya menghitung data yang sudah difilter)
-            df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
-            total_fuel = df_filtered['Volume (L)'].sum()
-            
-            # --- RAKIT HTML BARIS ---
-            rows_html = ""
-            for idx, row in df_filtered.iterrows():
-                vol = float(row['Volume (L)'])
-                tinggi = float(row['Tinggi (cm)'])
-                
-                # --- LOGIKA WARNA STATUS ---
-                if vol > 15000:
-                    status_cls = "status-aman"   # Hijau
-                    status_txt = "AMAN"
-                elif vol > 5000:
-                    status_cls = "status-cukup"  # Kuning
-                    status_txt = "CUKUP"
-                else:
-                    status_cls = "status-kurang" # Merah
-                    status_txt = "KURANG"
-                
-                # Render Baris
-                rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
-
-            # --- RENDER TABEL FULL ---
-            final_table_html = f"""
-<div class="cyber-card">
-<table class="cyber-table">
-<thead>
-<tr><th>TANGKI</th><th>TINGGI</th><th>VOLUME</th><th>STATUS</th></tr>
-</thead>
-<tbody>{rows_html}</tbody>
-</table>
-<div class="cyber-footer">
-<span class="footer-label">TOTAL STOCK FUEL:</span>
-<span class="footer-value">{total_fuel:,.0f} LITER</span>
-</div>
-</div>
-"""
-            st.markdown(final_table_html, unsafe_allow_html=True)
-            
+    with col_kanan:
+        st.markdown("### 📏 SOUNDING")
+        with st.container():
+            tinggi_cm = st.number_input("SILAHKAN ISI ANGKA SOUNDINGAN (CM)", min_value=0.0, step=0.1, format="%.2f")
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔄 REFRESH DATA"):
-                st.cache_data.clear()
-                st.rerun()
+            
+            c_btn1, c_btn2 = st.columns(2)
+            with c_btn1: tombol_cek = st.button("🔍 CEK STOCK", type="secondary")
+            with c_btn2: tombol_submit = st.button("🔌 KIRIM LAPORAN", type="primary")
 
+            result_placeholder = st.empty()
+
+    # 2. LOGIKA HITUNG & SIMPAN
+    def hitung_volume_solar(tank_id, depth_val):
+        if df_master.empty: return None
+        df_tangki = df_master[df_master['Tank'] == tank_id]
+        if df_tangki.empty: return None
+        idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
+        return df_tangki.loc[idx, 'Liter']
+
+    if tombol_cek or tombol_submit:
+        if tinggi_cm >= 0:
+            volume_hasil = hitung_volume_solar(tangki_pilihan, tinggi_cm)
+            if volume_hasil is not None:
+                if volume_hasil > 15000: status_txt, color_hex = "AMAN", "#00ff00"
+                elif volume_hasil > 5000: status_txt, color_hex = "CUKUP", "#ffff00"
+                else: status_txt, color_hex = "KURANG", "#ff0044"
+
+                result_placeholder.markdown(f"""
+                <div class="result-card">
+                    <div class="result-title">ESTIMASI VOLUME FUEL</div>
+                    <div class="result-value">{volume_hasil:,.0f} L</div>
+                    <div class="result-status" style="color: {color_hex}; text-shadow: 0 0 15px {color_hex};">STATUS: {status_txt}</div>
+                </div>""", unsafe_allow_html=True)
+                
+                if tombol_submit:
+                    if admin_nama:
+                        new_record = {
+                            "Nama": admin_nama, "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
+                            "Shift": shift, "Tangki": tangki_pilihan,
+                            "Tinggi (cm)": tinggi_cm, "Volume (L)": volume_hasil
+                        }
+                        with st.spinner("Mengirim ke Server..."):
+                            try:
+                                df_old = conn.read(worksheet="HISTORICAL", ttl=0)
+                                df_new_row = pd.DataFrame([new_record]).astype(str)
+                                df_final = pd.concat([df_old, df_new_row], ignore_index=True)
+                                conn.update(worksheet="HISTORICAL", data=df_final)
+                                if len(dex_queue) > 0: localS.deleteAll()
+                                st.toast("SUKSES: DATA TERKIRIM!", icon="🚀")
+                            except:
+                                dex_queue.append(new_record)
+                                localS.setItem("dexter_historical_queue", dex_queue)
+                                st.toast("OFFLINE: Data disimpan di HP", icon="💾")
+                        time.sleep(1.5)
+                        st.rerun()
+                    else: st.warning("⚠️ MOHON ISI NAMA ADMIN.")
+            else: st.error("DATA TANGKI TIDAK DITEMUKAN.")
+        else: st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
+
+    # 3. TABEL LAPORAN (FILTERING STRICT)
+    st.markdown("---")
+    st.markdown("""
+        <div style="text-align: center; border: 2px solid #00f2ff; padding: 10px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
+            <h3 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0;">📊 LAPORAN HARIAN</h3>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # Menampilkan Info Tanggal & Shift yang sedang difilter
+    tgl_pilih = tgl_laporan.strftime("%Y-%m-%d")
+    shift_selected = str(shift).strip()
+    
+    st.markdown(f"""
+    <div style="text-align: center; font-family: 'Share Tech Mono'; color: #00ff00; margin-top: 10px; font-size: 14px;">
+        DATA: <span style="color:white">{tgl_pilih}</span> | <span style="color:white">{shift_selected}</span>
+    </div><br>""", unsafe_allow_html=True)
+
+    try:
+        df_report = conn.read(worksheet="HISTORICAL", ttl=0)
+        
+        if not df_report.empty:
+            df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce').dt.strftime('%Y-%m-%d')
+            df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
+            
+            # FILTER DATA (Disimpan ke variabel global df_filtered agar bisa dibaca Sidebar)
+            df_filtered = df_report[
+                (df_report['Tanggal'] == tgl_pilih) & 
+                (df_report['Shift'] == shift_selected)
+            ].copy()
+            
+            if not df_filtered.empty:
+                df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
+                total_fuel = df_filtered['Volume (L)'].sum()
+                
+                rows_html = ""
+                for idx, row in df_filtered.iterrows():
+                    vol = float(row['Volume (L)'])
+                    tinggi = float(row['Tinggi (cm)'])
+                    if vol > 15000: status_cls, status_txt = "status-aman", "AMAN"
+                    elif vol > 5000: status_cls, status_txt = "status-cukup", "CUKUP"
+                    else: status_cls, status_txt = "status-kurang", "KURANG"
+                    rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
+
+                final_table_html = f"""
+                <div class="cyber-card">
+                <table class="cyber-table">
+                <thead><tr><th>TANGKI</th><th>TINGGI</th><th>VOLUME</th><th>STATUS</th></tr></thead>
+                <tbody>{rows_html}</tbody>
+                </table>
+                <div class="cyber-footer">
+                <span class="footer-label">TOTAL STOCK FUEL:</span>
+                <span class="footer-value">{total_fuel:,.0f} LITER</span>
+                </div></div>
+                """
+                st.markdown(final_table_html, unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🔄 REFRESH DATA"): st.cache_data.clear(); st.rerun()
+            else:
+                st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih}.")
+        else: st.warning("DATABASE KOSONG.")
+    except Exception as e: st.info("Menghubungkan database...")
+
+
+# ============================================================
+# ISI TAB 2 : DASHBOARD ANALYTICS
+# ============================================================
+with tab_dashboard:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 📈 ANALISIS DATA HISTORIS")
+    
+    try:
+        df_dash = conn.read(worksheet="HISTORICAL", ttl=0)
+        
+        if not df_dash.empty:
+            df_dash['Tanggal'] = pd.to_datetime(df_dash['Tanggal'], errors='coerce')
+            df_dash['Volume (L)'] = pd.to_numeric(df_dash['Volume (L)'], errors='coerce').fillna(0)
+            
+            # KPI
+            col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+            total_recorded = df_dash['Volume (L)'].sum()
+            total_entries = len(df_dash)
+            avg_volume = df_dash['Volume (L)'].mean()
+            
+            def neon_metric(label, value):
+                return f"""
+                <div style="border:1px solid #00f2ff; padding:10px; border-radius:10px; background:rgba(0,242,255,0.05); text-align:center;">
+                    <div style="color:#aaa; font-size:0.8em; font-family:'Share Tech Mono'">{label}</div>
+                    <div style="color:#00f2ff; font-size:1.5em; font-weight:bold; font-family:'Orbitron'">{value}</div>
+                </div>
+                """
+            
+            with col_kpi1: st.markdown(neon_metric("TOTAL RECORDED", f"{total_recorded/1000:,.1f} kL"), unsafe_allow_html=True)
+            with col_kpi2: st.markdown(neon_metric("TOTAL INPUT", f"{total_entries}"), unsafe_allow_html=True)
+            with col_kpi3: st.markdown(neon_metric("AVG VOLUME", f"{avg_volume:,.0f} L"), unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # CHART
+            st.markdown("##### 🚛 TOTAL VOLUME PER TANGKI")
+            fuel_per_tank = df_dash.groupby("Tangki")['Volume (L)'].sum().sort_values(ascending=False)
+            st.bar_chart(fuel_per_tank, color="#00f2ff")
+            
+            st.markdown("---")
+            st.markdown("##### 📅 TREN HARIAN")
+            daily_trend = df_dash.groupby(df_dash['Tanggal'].dt.date)['Volume (L)'].sum()
+            st.line_chart(daily_trend, color="#00ff00")
+            
         else:
-            # Pesan jika tidak ada data untuk shift tersebut
-            st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih}.")
-    else:
-        st.warning("DATABASE KOSONG.")
-
-except Exception as e:
-    st.info("Menghubungkan database...")
-
-# Footer
-st.markdown("---")
-st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
+            st.info("Belum ada data history.")
+            
+    except Exception as e:
+        st.error(f"Gagal memuat dashboard: {e}")
 
 # ==========================================
-# LANGKAH 6 : FITUR HAPUS DATA (DI SIDEBAR)
+# SIDEBAR : FITUR HAPUS DATA (ADMIN)
 # ==========================================
-
-# Tambahkan pemisah di sidebar sebelum menu hapus
 st.sidebar.markdown("---")
 
-# Gunakan st.sidebar.expander agar muncul di panel kiri
 with st.sidebar.expander("🗑️ HAPUS DATA (ADMIN)"):
     st.markdown("""
         <div style="background-color: rgba(50, 0, 0, 0.5); border: 1px solid #ff0044; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
@@ -479,42 +435,30 @@ with st.sidebar.expander("🗑️ HAPUS DATA (ADMIN)"):
         </div>
     """, unsafe_allow_html=True)
 
-    # Pastikan variabel df_filtered sudah terbentuk dari Langkah 5
-    if 'df_filtered' in locals() and not df_filtered.empty:
-        # Bikin list pilihan format ringkas untuk sidebar
+    # Menggunakan df_filtered yang sudah diproses di Tab 1
+    if not df_filtered.empty:
         pilihan_hapus = []
         mapping_index = {}
         
         for idx, row in df_filtered.iterrows():
-            # --- REVISI: FORMAT JADI TANGKI | TINGGI (CM) ---
-            # Kita ambil nilai tinggi dan pastikan formatnya rapi
+            # Format: TANGKI | TINGGI cm
             tinggi_val = float(row['Tinggi (cm)'])
             label = f"{row['Tangki']} | {tinggi_val} cm"
-            
             pilihan_hapus.append(label)
             mapping_index[label] = idx 
 
         target_hapus = st.selectbox("Pilih Data Salah:", pilihan_hapus)
-        
-        # Input Password
         pass_input = st.text_input("Password:", type="password")
         
-        # Tombol Eksekusi
-        if st.button("🔥 HAPUS SEKARANG", use_container_width=True):
-            # Ganti "admin123" dengan password keinginan Mas Faiz
+        if st.button("🔥 HAPUS DATA", use_container_width=True):
             if pass_input == "hapus": 
                 index_to_drop = mapping_index[target_hapus]
-                
                 with st.spinner("Menghapus..."):
                     try:
-                        # Baca Data Full Terbaru
                         df_current = conn.read(worksheet="HISTORICAL", ttl=0)
-                        
-                        # Ambil detail baris yang mau dihapus dari memori filter
                         row_to_remove = df_filtered.loc[index_to_drop]
                         
-                        # Filter df_current untuk membuang baris yang persis sama
-                        # Kita cocokan Tanggal, Shift, Tangki, dan Tinggi (karena tinggi yang jadi acuan hapus)
+                        # Filter Hapus (Cocokkan Tanggal, Shift, Tangki, Tinggi)
                         df_updated = df_current[
                             ~(
                                 (df_current['Tanggal'] == row_to_remove['Tanggal']) &
@@ -523,18 +467,15 @@ with st.sidebar.expander("🗑️ HAPUS DATA (ADMIN)"):
                                 (df_current['Tinggi (cm)'].astype(str) == str(row_to_remove['Tinggi (cm)']))
                             )
                         ]
-                        
-                        # Update ke GSheets
                         conn.update(worksheet="HISTORICAL", data=df_updated)
                         st.toast("DATA TERHAPUS!", icon="🗑️")
-                        
                         time.sleep(1.0)
                         st.rerun() 
-                        
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-            else:
-                st.error("⛔ PASSWORD SALAH")
-                
+                    except Exception as e: st.error(f"Error: {e}")
+            else: st.error("⛔ PASSWORD SALAH")
     else:
         st.markdown("<p style='font-size: 0.8em; color: #555; text-align: center;'>Tidak ada data tampil untuk dihapus.</p>", unsafe_allow_html=True)
+
+# Footer
+st.markdown("---")
+st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
