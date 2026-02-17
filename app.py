@@ -192,7 +192,7 @@ def load_master_data():
 df_master = load_master_data()
 
 # ==========================================
-# HEADER UTAMA (GLOBAL)
+# LANGKAH 3 : HEADER UTAMA (GLOBAL)
 # ==========================================
 with st.sidebar:
     st.markdown("### 🖥️ SYSTEM STATUS")
@@ -212,7 +212,7 @@ tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD ANAL
 df_filtered = pd.DataFrame()
 
 # ============================================================
-# ISI TAB 1 : INPUT DATA & LAPORAN HARIAN
+# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN
 # ============================================================
 with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -255,7 +255,7 @@ with tab_input:
             st.markdown("<br>", unsafe_allow_html=True)
             
             c_btn1, c_btn2 = st.columns(2)
-            with c_btn1: tombol_cek = st.button("🔍 CEK STOCK", type="secondary")
+            with c_btn1: tombol_cek = st.button("🔍 CEK STOCK FUEL", type="secondary")
             with c_btn2: tombol_submit = st.button("🔌 KIRIM LAPORAN", type="primary")
 
             result_placeholder = st.empty()
@@ -372,7 +372,7 @@ with tab_input:
 
 
 # ============================================================
-# ISI TAB 2 : DASHBOARD ANALYTICS
+# LANGKAH 5 :  DASHBOARD ANALYTICS
 # ============================================================
 with tab_dashboard:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -422,60 +422,79 @@ with tab_dashboard:
         st.error(f"Gagal memuat dashboard: {e}")
 
 # ==========================================
-# SIDEBAR : FITUR HAPUS DATA (ADMIN)
+# LANGKAH 6 : FITUR HAPUS DATA (REVISI ANTI-BLUNDER)
 # ==========================================
 st.sidebar.markdown("---")
 
-with st.sidebar.expander("🗑️ HAPUS DATA (ADMIN)"):
+with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN/PENGAWAS)"):
     st.markdown("""
         <div style="background-color: rgba(50, 0, 0, 0.5); border: 1px solid #ff0044; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
             <p style="color: #ff0044; font-family: 'Share Tech Mono'; margin: 0; font-size: 0.8em; text-align: center;">
-                ⚠️ DATA HILANG PERMANEN
+                ⚠️ DATA AKAN DIHAPUS PERMANEN
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Menggunakan df_filtered yang sudah diproses di Tab 1
-    if not df_filtered.empty:
+    # Pastikan variabel df_filtered tersedia
+    if 'df_filtered' in locals() and not df_filtered.empty:
         pilihan_hapus = []
-        mapping_index = {}
+        mapping_index = {} # Mapping untuk menyimpan data row asli
         
+        # Loop untuk membuat list dropdown
         for idx, row in df_filtered.iterrows():
-            # Format: TANGKI | TINGGI cm
             tinggi_val = float(row['Tinggi (cm)'])
-            label = f"{row['Tangki']} | {tinggi_val} cm"
+            # Kita buat label unik dengan menambahkan jam input/urutan jika perlu, 
+            # tapi di sini kita pakai format standar
+            label = f"{row['Tangki']} | {tinggi_val} cm | {row['Volume (L)']:,.0f} L"
             pilihan_hapus.append(label)
-            mapping_index[label] = idx 
+            # Kita simpan row asli di memori untuk dicocokkan nanti
+            mapping_index[label] = row 
 
         target_hapus = st.selectbox("Pilih Data Salah:", pilihan_hapus)
         pass_input = st.text_input("Password:", type="password")
         
-        if st.button("🔥 HAPUS DATA", use_container_width=True):
+        # Tombol Eksekusi
+        if st.button("🔥 HAPUS 1 BARIS", use_container_width=True):
             if pass_input == "hapus": 
-                index_to_drop = mapping_index[target_hapus]
-                with st.spinner("Menghapus..."):
+                # Ambil data baris yang mau dihapus dari mapping
+                row_target = mapping_index[target_hapus]
+                
+                with st.spinner("Mencari & Menghapus 1 Data..."):
                     try:
+                        # 1. BACA DATA TERBARU DARI SERVER
                         df_current = conn.read(worksheet="HISTORICAL", ttl=0)
-                        row_to_remove = df_filtered.loc[index_to_drop]
                         
-                        # Filter Hapus (Cocokkan Tanggal, Shift, Tangki, Tinggi)
-                        df_updated = df_current[
-                            ~(
-                                (df_current['Tanggal'] == row_to_remove['Tanggal']) &
-                                (df_current['Shift'] == row_to_remove['Shift']) &
-                                (df_current['Tangki'] == row_to_remove['Tangki']) &
-                                (df_current['Tinggi (cm)'].astype(str) == str(row_to_remove['Tinggi (cm)']))
-                            )
+                        # 2. CARI SEMUA BARIS YANG COCOK (MATCHING)
+                        # Kita cari data di database yang isinya SAMA PERSIS dengan target
+                        matches = df_current[
+                            (df_current['Tanggal'] == row_target['Tanggal']) &
+                            (df_current['Shift'] == row_target['Shift']) &
+                            (df_current['Tangki'] == row_target['Tangki']) &
+                            (df_current['Tinggi (cm)'].astype(str) == str(row_target['Tinggi (cm)']))
                         ]
-                        conn.update(worksheet="HISTORICAL", data=df_updated)
-                        st.toast("DATA TERHAPUS!", icon="🗑️")
-                        time.sleep(1.0)
-                        st.rerun() 
-                    except Exception as e: st.error(f"Error: {e}")
-            else: st.error("⛔ PASSWORD SALAH")
-    else:
-        st.markdown("<p style='font-size: 0.8em; color: #555; text-align: center;'>Tidak ada data tampil untuk dihapus.</p>", unsafe_allow_html=True)
+                        
+                        if not matches.empty:
+                            # 3. HAPUS HANYA SATU (YANG PALING TERAKHIR DIINPUT/INDEX TERBESAR)
+                            # Ini kunci pengamannya: Kita ambil index terakhir saja
+                            last_match_index = matches.index[-1]
+                            
+                            # Drop baris berdasarkan index spesifik itu saja
+                            df_updated = df_current.drop(last_match_index)
+                            
+                            # 4. UPDATE KE GOOGLE SHEETS
+                            conn.update(worksheet="HISTORICAL", data=df_updated)
+                            
+                            st.toast("1 BARIS BERHASIL DIHAPUS!", icon="🗑️")
+                            time.sleep(1.5)
+                            st.rerun()
+                        else:
+                            st.warning("Data sudah tidak ada di server (mungkin sudah dihapus).")
+                            time.sleep(1.5)
+                            st.rerun()
 
-# Footer
-st.markdown("---")
-st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Gagal Menghapus: {e}")
+            else:
+                st.error("⛔ PASSWORD SALAH")
+    else:
+        st.markdown("<p style='font-size: 0.8em; color: #555; text-align: center;'>Tidak ada data yang ditampilkan untuk dihapus.</p>", unsafe_allow_html=True)
