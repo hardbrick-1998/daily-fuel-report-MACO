@@ -447,11 +447,11 @@ with tab_dashboard:
 # ==========================================
 st.sidebar.markdown("---")
 
-with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN/PENGAWAS)"):
+with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN / PENGAWAS)"):
     st.markdown("""
         <div style="background-color: rgba(50, 0, 0, 0.5); border: 1px solid #ff0044; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
             <p style="color: #ff0044; font-family: 'Share Tech Mono'; margin: 0; font-size: 0.8em; text-align: center;">
-                ⚠️ HAPUS PER-BARIS (ONE BY ONE)
+                ⚠️ HAPUS DATA PERMANEN
             </p>
         </div>
     """, unsafe_allow_html=True)
