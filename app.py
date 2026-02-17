@@ -7,15 +7,15 @@ import time
 import os
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL FIX ICON)
+# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL FIX CSS)
 # ==========================================
-st.set_page_config(page_title="TERRA FUEL MACO HAULING", page_icon="📋", layout="wide")
+st.set_page_config(page_title="TERRA FUEL MACO", page_icon="📋", layout="wide")
 
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
     
-    /* --- 1. FORCE BACKGROUND GELAP (MAIN & SIDEBAR) --- */
+    /* --- 1. FORCE BACKGROUND GELAP --- */
     .stApp { 
         background-color: #050505 !important; 
         background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), 
@@ -28,15 +28,15 @@ st.markdown("""
         border-right: 1px solid #00f2ff;
     }
     
-    /* REVISI DI SINI: Kita persempit targetnya supaya IKON tidak rusak */
-    /* Target Header & Paragraf Saja */
+    /* --- FIX SIDEBAR ICON: JANGAN TARGET SPAN --- */
+    /* Hanya ubah font untuk Header (h1-h3) dan Paragraf (p/label) */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, .stMarkdown label, .stMarkdown p {
         color: #e0e0e0 !important;
         font-family: 'Orbitron', sans-serif !important;
     }
     
-    /* Perbaiki warna teks Expander di Sidebar tanpa merusak ikon */
+    /* Warna teks Expander */
     [data-testid="stSidebar"] .streamlit-expanderHeader {
         color: #e0e0e0 !important;
         font-family: 'Orbitron', sans-serif !important;
@@ -163,7 +163,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTER"
 
-# Auto Sync
+# Auto Sync Logic
 dex_queue = localS.getItem("dexter_historical_queue") or []
 if len(dex_queue) > 0:
     try:
@@ -179,7 +179,7 @@ if len(dex_queue) > 0:
     except Exception as e:
         st.toast(f"⚠️ OFFLINE: {len(dex_queue)} Data di HP", icon="💾")
 
-# Load Master
+# Load Master Data
 @st.cache_data(ttl=600)
 def load_master_data():
     try:
@@ -192,35 +192,34 @@ def load_master_data():
 df_master = load_master_data()
 
 # ==========================================
-# LANGKAH 3 : HEADER UTAMA (GLOBAL)
+# LANGKAH 3 : HEADER UTAMA & SIDEBAR
 # ==========================================
 with st.sidebar:
     st.markdown("### 🖥️ SYSTEM STATUS")
     st.success("DEXTER ONLINE")
     st.info(f"Connected to site : MACO")
 
-st.markdown("""<div class="title-box"><h1>📋 TERRA DIGITAL FUEL MACO</h1></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="title-box"><h1>📋 TERRA FUEL MACO</h1></div>""", unsafe_allow_html=True)
 st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO HAULING</p>', unsafe_allow_html=True)
-st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-top: -15px;">APPS NAME: DATA SOUNDING FUEL</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-top: -15px;">APPS NAME: DATA FUEL STOCK</p>', unsafe_allow_html=True)
 
-# ==========================================
-# KONFIGURASI TABS (INPUT vs DASHBOARD)
-# ==========================================
-tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD ANALYTICS"])
+# KONFIGURASI TABS
+tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD"])
 
-# Variabel global untuk filter (agar bisa dibaca fitur hapus di sidebar)
+# Variabel global df_filtered (agar bisa dibaca fitur hapus di sidebar)
 df_filtered = pd.DataFrame()
 
-# ============================================================
+# ==========================================
 # LANGKAH 4 : INPUT DATA & LAPORAN HARIAN
-# ============================================================
+# ==========================================
 with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
     
     # 1. FORM INPUT
     c1, c2, c3 = st.columns(3)
     with c1: admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Nama...")
-    with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now())
+    # UPDATE: FORMAT TANGGAL DD/MM/YYYY
+    with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now(), format="DD/MM/YYYY")
     with c3: shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
 
     st.markdown("---")
@@ -285,8 +284,11 @@ with tab_input:
                 
                 if tombol_submit:
                     if admin_nama:
+                        # UPDATE: SIMPAN DD-MM-YYYY
+                        tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
+                        
                         new_record = {
-                            "Nama": admin_nama, "Tanggal": tgl_laporan.strftime("%Y-%m-%d"), 
+                            "Nama": admin_nama, "Tanggal": tgl_simpan, 
                             "Shift": shift, "Tangki": tangki_pilihan,
                             "Tinggi (cm)": tinggi_cm, "Volume (L)": volume_hasil
                         }
@@ -312,29 +314,30 @@ with tab_input:
     st.markdown("---")
     st.markdown("""
         <div style="text-align: center; border: 2px solid #00f2ff; padding: 10px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
-            <h3 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0;">📊 LAPORAN HARIAN</h3>
+            <h3 style="font-family: 'Orbitron'; color: #00f2ff; margin: 0;">📊 LAPORAN STOCK FUEL</h3>
         </div>
     """, unsafe_allow_html=True)
     
-    # Menampilkan Info Tanggal & Shift yang sedang difilter
-    tgl_pilih = tgl_laporan.strftime("%Y-%m-%d")
+    # Menampilkan Info Tanggal & Shift yang sedang difilter (Format Indo)
+    tgl_pilih_indo = tgl_laporan.strftime("%d-%m-%Y")
     shift_selected = str(shift).strip()
     
     st.markdown(f"""
     <div style="text-align: center; font-family: 'Share Tech Mono'; color: #00ff00; margin-top: 10px; font-size: 14px;">
-        DATA: <span style="color:white">{tgl_pilih}</span> | <span style="color:white">{shift_selected}</span>
+        DATA: <span style="color:white">{tgl_pilih_indo}</span> | <span style="color:white">{shift_selected}</span>
     </div><br>""", unsafe_allow_html=True)
 
     try:
         df_report = conn.read(worksheet="HISTORICAL", ttl=0)
         
         if not df_report.empty:
-            df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce').dt.strftime('%Y-%m-%d')
+            # UPDATE: PARSING TANGGAL FORMAT DD-MM-YYYY
+            df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
             df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
             
-            # FILTER DATA (Disimpan ke variabel global df_filtered agar bisa dibaca Sidebar)
+            # FILTER DATA MENGGUNAKAN DATETIME
             df_filtered = df_report[
-                (df_report['Tanggal'] == tgl_pilih) & 
+                (df_report['Tanggal_dt'].dt.date == tgl_laporan) & 
                 (df_report['Shift'] == shift_selected)
             ].copy()
             
@@ -366,14 +369,14 @@ with tab_input:
                 st.markdown("<br>", unsafe_allow_html=True)
                 if st.button("🔄 REFRESH DATA"): st.cache_data.clear(); st.rerun()
             else:
-                st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih}.")
+                st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih_indo}.")
         else: st.warning("DATABASE KOSONG.")
     except Exception as e: st.info("Menghubungkan database...")
 
 
-# ============================================================
-# LANGKAH 5 :  DASHBOARD ANALYTICS
-# ============================================================
+# ==========================================
+# LANGKAH 5 : DASHBOARD ANALYTICS
+# ==========================================
 with tab_dashboard:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 📈 ANALISIS DATA HISTORIS")
@@ -382,7 +385,8 @@ with tab_dashboard:
         df_dash = conn.read(worksheet="HISTORICAL", ttl=0)
         
         if not df_dash.empty:
-            df_dash['Tanggal'] = pd.to_datetime(df_dash['Tanggal'], errors='coerce')
+            # UPDATE: Parsing Tanggal DD-MM-YYYY
+            df_dash['Tanggal_dt'] = pd.to_datetime(df_dash['Tanggal'], dayfirst=True, errors='coerce')
             df_dash['Volume (L)'] = pd.to_numeric(df_dash['Volume (L)'], errors='coerce').fillna(0)
             
             # KPI
@@ -412,7 +416,8 @@ with tab_dashboard:
             
             st.markdown("---")
             st.markdown("##### 📅 TREN HARIAN")
-            daily_trend = df_dash.groupby(df_dash['Tanggal'].dt.date)['Volume (L)'].sum()
+            # Group by Tanggal (String DD-MM-YYYY)
+            daily_trend = df_dash.groupby(df_dash['Tanggal_dt'].dt.strftime('%d-%m-%Y'))['Volume (L)'].sum()
             st.line_chart(daily_trend, color="#00ff00")
             
         else:
@@ -422,7 +427,7 @@ with tab_dashboard:
         st.error(f"Gagal memuat dashboard: {e}")
 
 # ==========================================
-# LANGKAH 6 : FITUR HAPUS DATA (REVISI ANTI-BLUNDER)
+# LANGKAH 6 : FITUR HAPUS DATA (ADMIN)
 # ==========================================
 st.sidebar.markdown("---")
 
@@ -430,71 +435,59 @@ with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN/PENGAWAS)"):
     st.markdown("""
         <div style="background-color: rgba(50, 0, 0, 0.5); border: 1px solid #ff0044; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
             <p style="color: #ff0044; font-family: 'Share Tech Mono'; margin: 0; font-size: 0.8em; text-align: center;">
-                ⚠️ DATA AKAN DIHAPUS PERMANEN
+                ⚠️ HAPUS PER-BARIS (ONE BY ONE)
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Pastikan variabel df_filtered tersedia
     if 'df_filtered' in locals() and not df_filtered.empty:
         pilihan_hapus = []
-        mapping_index = {} # Mapping untuk menyimpan data row asli
+        mapping_index = {} 
         
-        # Loop untuk membuat list dropdown
         for idx, row in df_filtered.iterrows():
             tinggi_val = float(row['Tinggi (cm)'])
-            # Kita buat label unik dengan menambahkan jam input/urutan jika perlu, 
-            # tapi di sini kita pakai format standar
             label = f"{row['Tangki']} | {tinggi_val} cm | {row['Volume (L)']:,.0f} L"
             pilihan_hapus.append(label)
-            # Kita simpan row asli di memori untuk dicocokkan nanti
             mapping_index[label] = row 
 
         target_hapus = st.selectbox("Pilih Data Salah:", pilihan_hapus)
         pass_input = st.text_input("Password:", type="password")
         
-        # Tombol Eksekusi
         if st.button("🔥 HAPUS 1 BARIS", use_container_width=True):
             if pass_input == "hapus": 
-                # Ambil data baris yang mau dihapus dari mapping
                 row_target = mapping_index[target_hapus]
                 
                 with st.spinner("Mencari & Menghapus 1 Data..."):
                     try:
-                        # 1. BACA DATA TERBARU DARI SERVER
                         df_current = conn.read(worksheet="HISTORICAL", ttl=0)
                         
-                        # 2. CARI SEMUA BARIS YANG COCOK (MATCHING)
-                        # Kita cari data di database yang isinya SAMA PERSIS dengan target
+                        # LOGIKA HAPUS: STRING MATCHING AGAR AMAN
+                        # Pastikan format Tanggal String sama persis
                         matches = df_current[
-                            (df_current['Tanggal'] == row_target['Tanggal']) &
+                            (df_current['Tanggal'].astype(str) == str(row_target['Tanggal'])) &
                             (df_current['Shift'] == row_target['Shift']) &
                             (df_current['Tangki'] == row_target['Tangki']) &
                             (df_current['Tinggi (cm)'].astype(str) == str(row_target['Tinggi (cm)']))
                         ]
                         
                         if not matches.empty:
-                            # 3. HAPUS HANYA SATU (YANG PALING TERAKHIR DIINPUT/INDEX TERBESAR)
-                            # Ini kunci pengamannya: Kita ambil index terakhir saja
+                            # HAPUS INDEX TERAKHIR (SAFE MODE)
                             last_match_index = matches.index[-1]
-                            
-                            # Drop baris berdasarkan index spesifik itu saja
                             df_updated = df_current.drop(last_match_index)
                             
-                            # 4. UPDATE KE GOOGLE SHEETS
                             conn.update(worksheet="HISTORICAL", data=df_updated)
-                            
                             st.toast("1 BARIS BERHASIL DIHAPUS!", icon="🗑️")
                             time.sleep(1.5)
                             st.rerun()
                         else:
-                            st.warning("Data sudah tidak ada di server (mungkin sudah dihapus).")
+                            st.warning("Data sudah tidak ada di server.")
                             time.sleep(1.5)
                             st.rerun()
-
-                    except Exception as e:
-                        st.error(f"Gagal Menghapus: {e}")
-            else:
-                st.error("⛔ PASSWORD SALAH")
+                    except Exception as e: st.error(f"Gagal Menghapus: {e}")
+            else: st.error("⛔ PASSWORD SALAH")
     else:
-        st.markdown("<p style='font-size: 0.8em; color: #555; text-align: center;'>Tidak ada data yang ditampilkan untuk dihapus.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 0.8em; color: #555; text-align: center;'>Tidak ada data tampil untuk dihapus.</p>", unsafe_allow_html=True)
+
+# Footer Global
+st.markdown("---")
+st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
