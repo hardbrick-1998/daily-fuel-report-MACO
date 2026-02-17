@@ -461,3 +461,80 @@ except Exception as e:
 # Footer
 st.markdown("---")
 st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
+
+# ==========================================
+# LANGKAH 6 : FITUR HAPUS DATA (DI SIDEBAR)
+# ==========================================
+
+# Tambahkan pemisah di sidebar sebelum menu hapus
+st.sidebar.markdown("---")
+
+# Gunakan st.sidebar.expander agar muncul di panel kiri
+with st.sidebar.expander("🗑️ HAPUS DATA (ADMIN)"):
+    st.markdown("""
+        <div style="background-color: rgba(50, 0, 0, 0.5); border: 1px solid #ff0044; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+            <p style="color: #ff0044; font-family: 'Share Tech Mono'; margin: 0; font-size: 0.8em; text-align: center;">
+                ⚠️ DATA HILANG PERMANEN
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Pastikan variabel df_filtered sudah terbentuk dari Langkah 5
+    if 'df_filtered' in locals() and not df_filtered.empty:
+        # Bikin list pilihan format ringkas untuk sidebar
+        pilihan_hapus = []
+        mapping_index = {}
+        
+        for idx, row in df_filtered.iterrows():
+            # --- REVISI: FORMAT JADI TANGKI | TINGGI (CM) ---
+            # Kita ambil nilai tinggi dan pastikan formatnya rapi
+            tinggi_val = float(row['Tinggi (cm)'])
+            label = f"{row['Tangki']} | {tinggi_val} cm"
+            
+            pilihan_hapus.append(label)
+            mapping_index[label] = idx 
+
+        target_hapus = st.selectbox("Pilih Data Salah:", pilihan_hapus)
+        
+        # Input Password
+        pass_input = st.text_input("Password:", type="password")
+        
+        # Tombol Eksekusi
+        if st.button("🔥 HAPUS SEKARANG", use_container_width=True):
+            # Ganti "admin123" dengan password keinginan Mas Faiz
+            if pass_input == "hapus": 
+                index_to_drop = mapping_index[target_hapus]
+                
+                with st.spinner("Menghapus..."):
+                    try:
+                        # Baca Data Full Terbaru
+                        df_current = conn.read(worksheet="HISTORICAL", ttl=0)
+                        
+                        # Ambil detail baris yang mau dihapus dari memori filter
+                        row_to_remove = df_filtered.loc[index_to_drop]
+                        
+                        # Filter df_current untuk membuang baris yang persis sama
+                        # Kita cocokan Tanggal, Shift, Tangki, dan Tinggi (karena tinggi yang jadi acuan hapus)
+                        df_updated = df_current[
+                            ~(
+                                (df_current['Tanggal'] == row_to_remove['Tanggal']) &
+                                (df_current['Shift'] == row_to_remove['Shift']) &
+                                (df_current['Tangki'] == row_to_remove['Tangki']) &
+                                (df_current['Tinggi (cm)'].astype(str) == str(row_to_remove['Tinggi (cm)']))
+                            )
+                        ]
+                        
+                        # Update ke GSheets
+                        conn.update(worksheet="HISTORICAL", data=df_updated)
+                        st.toast("DATA TERHAPUS!", icon="🗑️")
+                        
+                        time.sleep(1.0)
+                        st.rerun() 
+                        
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+            else:
+                st.error("⛔ PASSWORD SALAH")
+                
+    else:
+        st.markdown("<p style='font-size: 0.8em; color: #555; text-align: center;'>Tidak ada data tampil untuk dihapus.</p>", unsafe_allow_html=True)
