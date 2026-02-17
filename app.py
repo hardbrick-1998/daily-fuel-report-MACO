@@ -359,7 +359,7 @@ if tombol_cek or tombol_submit:
         st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
 
 # ==========================================
-# LANGKAH 5 : DAILY REPORT DASHBOARD (FIXED COLOR & GLOW)
+# LANGKAH 5 : DAILY REPORT DASHBOARD (FIXED SHIFT FILTER)
 # ==========================================
 st.markdown("---")
 st.markdown("<br>", unsafe_allow_html=True)
@@ -373,7 +373,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- INFO TANGGAL ---
+# --- INFO TANGGAL & SHIFT TERPILIH ---
 tgl_pilih = tgl_laporan.strftime("%Y-%m-%d")
 st.markdown(f"""
     <div style="text-align: center; font-family: 'Share Tech Mono'; color: #00ff00; margin-top: 10px; letter-spacing: 2px; font-size: 14px; text-shadow: 0 0 5px #00ff00;">
@@ -389,13 +389,21 @@ try:
     df_report = conn.read(worksheet="HISTORICAL", ttl=0)
     
     if not df_report.empty:
+        # 1. Standarisasi Format Tanggal
         df_report['Tanggal'] = pd.to_datetime(df_report['Tanggal'], errors='coerce').dt.strftime('%Y-%m-%d')
+        
+        # 2. Standarisasi Format Shift (PENTING: Ubah ke string & hapus spasi biar filter akurat)
+        df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
+        shift_selected = str(shift).strip()
+        
+        # 3. PROSES FILTERING (Hanya TANGGAL terpilih DAN SHIFT terpilih)
         df_filtered = df_report[
             (df_report['Tanggal'] == tgl_pilih) & 
-            (df_report['Shift'] == shift)
+            (df_report['Shift'] == shift_selected)
         ].copy()
         
         if not df_filtered.empty:
+            # Hitung Total (Otomatis hanya menghitung data yang sudah difilter)
             df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
             total_fuel = df_filtered['Volume (L)'].sum()
             
@@ -442,7 +450,8 @@ try:
                 st.rerun()
 
         else:
-            st.info("⚠️ BELUM ADA DATA DI TANGGAL DAN SHIFT INI.")
+            # Pesan jika tidak ada data untuk shift tersebut
+            st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih}.")
     else:
         st.warning("DATABASE KOSONG.")
 
