@@ -210,7 +210,7 @@ tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD"])
 df_filtered = pd.DataFrame()
 
 # ==========================================
-# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN
+# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN (REVISI INPUT & VALIDASI)
 # ==========================================
 with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -218,7 +218,6 @@ with tab_input:
     # 1. FORM INPUT
     c1, c2, c3 = st.columns(3)
     with c1: admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Nama...")
-    # UPDATE: FORMAT TANGGAL DD/MM/YYYY
     with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now(), format="DD/MM/YYYY")
     with c3: shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
 
@@ -250,14 +249,14 @@ with tab_input:
     with col_kanan:
         st.markdown("### 📏 SOUNDING")
         with st.container():
-            # REVISI: value=None (biar kosong), placeholder ada tulisan bayangan, format 1 desimal
+            # REVISI: Input default kosong (None), format 1 desimal
             tinggi_cm = st.number_input(
                 "SILAHKAN ISI ANGKA SOUNDINGAN (CM)", 
                 min_value=0.0, 
                 step=0.1, 
-                format="%.1f",     # Hanya 1 desimal
-                value=None,        # Nilai awal kosong
-                placeholder="0.0"  # Tulisan bayangan
+                format="%.1f", 
+                value=None,       # Default Kosong
+                placeholder="0.0" # Tulisan bayangan
             )
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -267,21 +266,34 @@ with tab_input:
 
             result_placeholder = st.empty()
 
-    # 2. LOGIKA HITUNG & SIMPAN
+    # 2. LOGIKA HITUNG & SIMPAN (DENGAN VALIDASI MAX TINGGI)
     def hitung_volume_solar(tank_id, depth_val):
-        if df_master.empty: return None
+        if df_master.empty: return None, "DB Empty"
         df_tangki = df_master[df_master['Tank'] == tank_id]
-        if df_tangki.empty: return None
+        if df_tangki.empty: return None, "Tank Not Found"
+        
+        # VALIDASI: Cek apakah input melebihi tinggi maksimal di database
+        max_tinggi_db = df_tangki['Tinggi'].max()
+        if depth_val > max_tinggi_db:
+            return None, "OVERFLOW" # Kode error khusus
+            
+        # Jika aman, cari volume
         idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
-        return df_tangki.loc[idx, 'Liter']
+        return df_tangki.loc[idx, 'Liter'], "OK"
 
     if tombol_cek or tombol_submit:
-        # PENTING: Cek "is not None" karena inputan sekarang bisa kosong
         if tinggi_cm is not None:
-            volume_hasil = hitung_volume_solar(tangki_pilihan, tinggi_cm)
-            if volume_hasil is not None:
-                if volume_hasil > 15000: status_txt, color_hex = "AMAN", "#00ff00"
-                elif volume_hasil > 5000: status_txt, color_hex = "CUKUP", "#ffff00"
+            # Panggil fungsi hitung
+            volume_hasil, status_msg = hitung_volume_solar(tangki_pilihan, tinggi_cm)
+            
+            # Cek status error
+            if status_msg == "OVERFLOW":
+                st.warning(f"⚠️ NILAI ANGKA SOUNDING TERLALU TINGGI! (Maks: {df_master[df_master['Tank']==tangki_pilihan]['Tinggi'].max()} cm). COBA PERIKSA KEMBALI.")
+            
+            elif volume_hasil is not None:
+                # Tentukan Warna Status
+                if volume_hasil > 12000: status_txt, color_hex = "AMAN", "#00ff00"
+                elif volume_hasil > 8000: status_txt, color_hex = "CUKUP", "#ffff00"
                 else: status_txt, color_hex = "KURANG", "#ff0044"
 
                 result_placeholder.markdown(f"""
@@ -293,9 +305,7 @@ with tab_input:
                 
                 if tombol_submit:
                     if admin_nama:
-                        # SIMPAN DD-MM-YYYY
                         tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
-                        
                         new_record = {
                             "Nama": admin_nama, "Tanggal": tgl_simpan, 
                             "Shift": shift, "Tangki": tangki_pilihan,
@@ -316,10 +326,10 @@ with tab_input:
                         time.sleep(1.5)
                         st.rerun()
                     else: st.warning("⚠️ MOHON ISI NAMA ADMIN.")
-            else: st.error("DATA TANGKI TIDAK DITEMUKAN.")
+            else: st.error("DATA TANGKI TIDAK DITEMUKAN DALAM DATABASE.")
         else: st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
 
-    # 3. TABEL LAPORAN (FILTERING STRICT)
+    # 3. TABEL LAPORAN
     st.markdown("---")
     st.markdown("""
         <div style="text-align: center; border: 2px solid #00f2ff; padding: 10px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
@@ -327,7 +337,6 @@ with tab_input:
         </div>
     """, unsafe_allow_html=True)
     
-    # Menampilkan Info Tanggal & Shift yang sedang difilter (Format Indo)
     tgl_pilih_indo = tgl_laporan.strftime("%d-%m-%Y")
     shift_selected = str(shift).strip()
     
@@ -340,11 +349,9 @@ with tab_input:
         df_report = conn.read(worksheet="HISTORICAL", ttl=0)
         
         if not df_report.empty:
-            # PARSING TANGGAL FORMAT DD-MM-YYYY
             df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
             df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
             
-            # FILTER DATA MENGGUNAKAN DATETIME
             df_filtered = df_report[
                 (df_report['Tanggal_dt'].dt.date == tgl_laporan) & 
                 (df_report['Shift'] == shift_selected)
@@ -358,8 +365,8 @@ with tab_input:
                 for idx, row in df_filtered.iterrows():
                     vol = float(row['Volume (L)'])
                     tinggi = float(row['Tinggi (cm)'])
-                    if vol > 15000: status_cls, status_txt = "status-aman", "AMAN"
-                    elif vol > 5000: status_cls, status_txt = "status-cukup", "CUKUP"
+                    if vol > 12000: status_cls, status_txt = "status-aman", "AMAN"
+                    elif vol > 8000: status_cls, status_txt = "status-cukup", "CUKUP"
                     else: status_cls, status_txt = "status-kurang", "KURANG"
                     rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
 
