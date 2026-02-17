@@ -250,7 +250,15 @@ with tab_input:
     with col_kanan:
         st.markdown("### 📏 SOUNDING")
         with st.container():
-            tinggi_cm = st.number_input("SILAHKAN ISI ANGKA SOUNDINGAN (CM)", min_value=0.0, step=0.1, format="%.2f")
+            # REVISI: value=None (biar kosong), placeholder ada tulisan bayangan, format 1 desimal
+            tinggi_cm = st.number_input(
+                "SILAHKAN ISI ANGKA SOUNDINGAN (CM)", 
+                min_value=0.0, 
+                step=0.1, 
+                format="%.1f",     # Hanya 1 desimal
+                value=None,        # Nilai awal kosong
+                placeholder="0.0"  # Tulisan bayangan
+            )
             st.markdown("<br>", unsafe_allow_html=True)
             
             c_btn1, c_btn2 = st.columns(2)
@@ -268,7 +276,8 @@ with tab_input:
         return df_tangki.loc[idx, 'Liter']
 
     if tombol_cek or tombol_submit:
-        if tinggi_cm >= 0:
+        # PENTING: Cek "is not None" karena inputan sekarang bisa kosong
+        if tinggi_cm is not None:
             volume_hasil = hitung_volume_solar(tangki_pilihan, tinggi_cm)
             if volume_hasil is not None:
                 if volume_hasil > 15000: status_txt, color_hex = "AMAN", "#00ff00"
@@ -284,7 +293,7 @@ with tab_input:
                 
                 if tombol_submit:
                     if admin_nama:
-                        # UPDATE: SIMPAN DD-MM-YYYY
+                        # SIMPAN DD-MM-YYYY
                         tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
                         
                         new_record = {
@@ -331,7 +340,7 @@ with tab_input:
         df_report = conn.read(worksheet="HISTORICAL", ttl=0)
         
         if not df_report.empty:
-            # UPDATE: PARSING TANGGAL FORMAT DD-MM-YYYY
+            # PARSING TANGGAL FORMAT DD-MM-YYYY
             df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
             df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
             
