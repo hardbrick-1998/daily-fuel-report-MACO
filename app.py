@@ -7,10 +7,10 @@ import time
 import os
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL FIX CSS)
+# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FIX ICON RAW LINK)
 # ==========================================
-# GANTI LINK DI BAWAH INI DENGAN LINK RAW GITHUB GAMBAR ANDA
-LOGO_URL = "https://github.com/hardbrick-1998/daily-fuel-report-MACO/blob/607139af43502eb30bbd4ed8cf88da9c19ddd347/logo_terra.jpeg" 
+# GANTI LINK DI BAWAH INI DENGAN LINK RAW GITHUB (SUDAH DIPERBAIKI)
+LOGO_URL = "https://raw.githubusercontent.com/hardbrick-1998/daily-fuel-report-MACO/607139af43502eb30bbd4ed8cf88da9c19ddd347/logo_terra.jpeg"
 
 # Konfigurasi Halaman (Browser Tab)
 st.set_page_config(
@@ -23,6 +23,7 @@ st.set_page_config(
 st.markdown(f"""
     <head>
         <link rel="apple-touch-icon" href="{LOGO_URL}">
+        <link rel="shortcut icon" href="{LOGO_URL}">
         <meta name="apple-mobile-web-app-title" content="TERRA-FUEL">
         <meta name="apple-mobile-web-app-capable" content="yes">
     </head>
@@ -227,7 +228,7 @@ tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD"])
 df_filtered = pd.DataFrame()
 
 # ==========================================
-# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN (REVISI INPUT & VALIDASI)
+# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN (FIX BACA TANGGAL)
 # ==========================================
 with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -266,14 +267,14 @@ with tab_input:
     with col_kanan:
         st.markdown("### 📏 SOUNDING")
         with st.container():
-            # REVISI: Input default kosong (None), format 1 desimal
+            # Input default kosong (None), format 1 desimal
             tinggi_cm = st.number_input(
                 "SILAHKAN ISI ANGKA SOUNDINGAN (CM)", 
                 min_value=0.0, 
                 step=0.1, 
                 format="%.1f", 
-                value=None,       # Default Kosong
-                placeholder="0.0" # Tulisan bayangan
+                value=None,       
+                placeholder="0.0" 
             )
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -283,34 +284,30 @@ with tab_input:
 
             result_placeholder = st.empty()
 
-    # 2. LOGIKA HITUNG & SIMPAN (DENGAN VALIDASI MAX TINGGI)
+    # 2. LOGIKA HITUNG & SIMPAN
     def hitung_volume_solar(tank_id, depth_val):
         if df_master.empty: return None, "DB Empty"
         df_tangki = df_master[df_master['Tank'] == tank_id]
         if df_tangki.empty: return None, "Tank Not Found"
         
-        # VALIDASI: Cek apakah input melebihi tinggi maksimal di database
+        # Validasi Max Tinggi
         max_tinggi_db = df_tangki['Tinggi'].max()
         if depth_val > max_tinggi_db:
-            return None, "OVERFLOW" # Kode error khusus
+            return None, "OVERFLOW"
             
-        # Jika aman, cari volume
         idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
         return df_tangki.loc[idx, 'Liter'], "OK"
 
     if tombol_cek or tombol_submit:
         if tinggi_cm is not None:
-            # Panggil fungsi hitung
             volume_hasil, status_msg = hitung_volume_solar(tangki_pilihan, tinggi_cm)
             
-            # Cek status error
             if status_msg == "OVERFLOW":
                 st.warning(f"⚠️ NILAI ANGKA SOUNDING TERLALU TINGGI! (Maks: {df_master[df_master['Tank']==tangki_pilihan]['Tinggi'].max()} cm). COBA PERIKSA KEMBALI.")
             
             elif volume_hasil is not None:
-                # Tentukan Warna Status
-                if volume_hasil > 12000: status_txt, color_hex = "AMAN", "#00ff00"
-                elif volume_hasil > 8000: status_txt, color_hex = "CUKUP", "#ffff00"
+                if volume_hasil > 15000: status_txt, color_hex = "AMAN", "#00ff00"
+                elif volume_hasil > 5000: status_txt, color_hex = "CUKUP", "#ffff00"
                 else: status_txt, color_hex = "KURANG", "#ff0044"
 
                 result_placeholder.markdown(f"""
@@ -322,9 +319,12 @@ with tab_input:
                 
                 if tombol_submit:
                     if admin_nama:
+                        # SIMPAN STRING AGAR KONSISTEN (DD-MM-YYYY)
                         tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
+                        
                         new_record = {
-                            "Nama": admin_nama, "Tanggal": tgl_simpan, 
+                            "Nama": admin_nama, 
+                            "Tanggal": tgl_simpan, 
                             "Shift": shift, "Tangki": tangki_pilihan,
                             "Tinggi (cm)": tinggi_cm, "Volume (L)": volume_hasil
                         }
@@ -343,10 +343,10 @@ with tab_input:
                         time.sleep(1.5)
                         st.rerun()
                     else: st.warning("⚠️ MOHON ISI NAMA ADMIN.")
-            else: st.error("DATA TANGKI TIDAK DITEMUKAN DALAM DATABASE.")
+            else: st.error("DATA TANGKI TIDAK DITEMUKAN.")
         else: st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
 
-    # 3. TABEL LAPORAN
+    # 3. TABEL LAPORAN (FILTERING LEBIH KUAT)
     st.markdown("---")
     st.markdown("""
         <div style="text-align: center; border: 2px solid #00f2ff; padding: 10px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
@@ -366,9 +366,15 @@ with tab_input:
         df_report = conn.read(worksheet="HISTORICAL", ttl=0)
         
         if not df_report.empty:
+            # === FIX PENTING: PAKSA FORMAT STRING DULU ===
+            df_report['Tanggal'] = df_report['Tanggal'].astype(str)
+            
+            # Parsing Tanggal (dayfirst=True mendahulukan Tanggal daripada Bulan)
             df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
+            
             df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
             
+            # FILTER DATA
             df_filtered = df_report[
                 (df_report['Tanggal_dt'].dt.date == tgl_laporan) & 
                 (df_report['Shift'] == shift_selected)
@@ -382,8 +388,8 @@ with tab_input:
                 for idx, row in df_filtered.iterrows():
                     vol = float(row['Volume (L)'])
                     tinggi = float(row['Tinggi (cm)'])
-                    if vol > 12000: status_cls, status_txt = "status-aman", "AMAN"
-                    elif vol > 8000: status_cls, status_txt = "status-cukup", "CUKUP"
+                    if vol > 15000: status_cls, status_txt = "status-aman", "AMAN"
+                    elif vol > 5000: status_cls, status_txt = "status-cukup", "CUKUP"
                     else: status_cls, status_txt = "status-kurang", "KURANG"
                     rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
 
@@ -408,7 +414,7 @@ with tab_input:
 
 
 # ==========================================
-# LANGKAH 5 : DASHBOARD ANALYTICS
+# LANGKAH 5 : DASHBOARD ANALYTICS (FIX BACA TANGGAL)
 # ==========================================
 with tab_dashboard:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -418,8 +424,13 @@ with tab_dashboard:
         df_dash = conn.read(worksheet="HISTORICAL", ttl=0)
         
         if not df_dash.empty:
-            # UPDATE: Parsing Tanggal DD-MM-YYYY
+            # === FIX PENTING: PAKSA FORMAT STRING DULU SEBELUM PARSING ===
+            df_dash['Tanggal'] = df_dash['Tanggal'].astype(str)
             df_dash['Tanggal_dt'] = pd.to_datetime(df_dash['Tanggal'], dayfirst=True, errors='coerce')
+            
+            # Buang data yang tanggalnya ERROR (NaT) agar grafik tidak rusak
+            df_dash = df_dash.dropna(subset=['Tanggal_dt'])
+            
             df_dash['Volume (L)'] = pd.to_numeric(df_dash['Volume (L)'], errors='coerce').fillna(0)
             
             # KPI
@@ -449,7 +460,7 @@ with tab_dashboard:
             
             st.markdown("---")
             st.markdown("##### 📅 TREN HARIAN")
-            # Group by Tanggal (String DD-MM-YYYY)
+            # Group by Tanggal (Format Indo DD-MM-YYYY)
             daily_trend = df_dash.groupby(df_dash['Tanggal_dt'].dt.strftime('%d-%m-%Y'))['Volume (L)'].sum()
             st.line_chart(daily_trend, color="#00ff00")
             
