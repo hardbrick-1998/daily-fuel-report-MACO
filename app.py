@@ -9,7 +9,24 @@ import os
 # ==========================================
 # LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL FIX CSS)
 # ==========================================
-st.set_page_config(page_title="TERRA FUEL MACO", page_icon="📋", layout="wide")
+# GANTI LINK DI BAWAH INI DENGAN LINK RAW GITHUB GAMBAR ANDA
+LOGO_URL = "https://raw.githubusercontent.com/username/repo/main/logo_terra.png" 
+
+# Konfigurasi Halaman (Browser Tab)
+st.set_page_config(
+    page_title="TERRA FUEL MACO", 
+    page_icon=LOGO_URL, # Ikon di Tab Browser pakai gambar custom
+    layout="wide"
+)
+
+# Konfigurasi Icon HP (Add to Home Screen)
+st.markdown(f"""
+    <head>
+        <link rel="apple-touch-icon" href="{LOGO_URL}">
+        <meta name="apple-mobile-web-app-title" content="TERRA-FUEL">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+    </head>
+""", unsafe_allow_html=True)
 
 st.markdown("""
     <style>
