@@ -10,7 +10,7 @@ import os
 # LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FINAL FIX CSS)
 # ==========================================
 # GANTI LINK DI BAWAH INI DENGAN LINK RAW GITHUB GAMBAR ANDA
-LOGO_URL = "https://raw.githubusercontent.com/username/repo/main/logo_terra.png" 
+LOGO_URL = "https://github.com/hardbrick-1998/daily-fuel-report-MACO/blob/607139af43502eb30bbd4ed8cf88da9c19ddd347/logo_terra.jpeg" 
 
 # Konfigurasi Halaman (Browser Tab)
 st.set_page_config(
