@@ -5,35 +5,62 @@ import pandas as pd
 from datetime import datetime
 import time
 import os
+import streamlit as st
+import json
+import base64
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA CYBERPUNK (FIX ICON RAW LINK)
+# LANGKAH 1 : KONFIGURASI TEMA & PWA (ANTI BOCOR)
 # ==========================================
-# GANTI LINK DI BAWAH INI DENGAN LINK RAW GITHUB (SUDAH DIPERBAIKI)
+
+# 1. LINK LOGO (RAW GITHUB)
 LOGO_URL = "https://raw.githubusercontent.com/hardbrick-1998/daily-fuel-report-MACO/607139af43502eb30bbd4ed8cf88da9c19ddd347/logo_terra.jpeg"
 
-# Konfigurasi Halaman (Browser Tab)
-st.set_page_config(
-    page_title="TERRA FUEL MACO", 
-    page_icon=LOGO_URL, # Ikon di Tab Browser pakai gambar custom
-    layout="wide"
-)
+# 2. KONFIGURASI HALAMAN DASAR
+st.set_page_config(page_title="TERRA FUEL MACO", page_icon=LOGO_URL, layout="wide")
 
-# Konfigurasi Icon HP (Add to Home Screen)
+# 3. MEMBUAT MANIFEST KHUSUS UNTUK ANDROID
+manifest = {
+    "name": "TERRA FUEL MACO",
+    "short_name": "TERRA FUEL",
+    "description": "Aplikasi Laporan Fuel MACO",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#050505",
+    "theme_color": "#00f2ff",
+    "icons": [
+        {
+            "src": LOGO_URL,
+            "sizes": "192x192",
+            "type": "image/jpeg"
+        },
+        {
+            "src": LOGO_URL,
+            "sizes": "512x512",
+            "type": "image/jpeg"
+        }
+    ]
+}
+manifest_json = json.dumps(manifest)
+b64_manifest = base64.b64encode(manifest_json.encode()).decode()
+href_manifest = f'data:application/manifest+json;base64,{b64_manifest}'
+
+# 4. SUNTIKKAN KODE KE HEAD HTML (RATA KIRI AGAR TIDAK BOCOR)
+# Perhatikan: Tidak ada spasi di depan tag <link> dan <meta>
 st.markdown(f"""
-    <head>
-        <link rel="apple-touch-icon" href="{LOGO_URL}">
-        <link rel="shortcut icon" href="{LOGO_URL}">
-        <meta name="apple-mobile-web-app-title" content="TERRA-FUEL">
-        <meta name="apple-mobile-web-app-capable" content="yes">
-    </head>
+<link rel="apple-touch-icon" href="{LOGO_URL}">
+<meta name="apple-mobile-web-app-title" content="TERRA FUEL">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="{href_manifest}">
 """, unsafe_allow_html=True)
 
+# 5. CSS TEMA CYBERPUNK
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
     
-    /* --- 1. FORCE BACKGROUND GELAP --- */
+    /* --- FORCE BACKGROUND GELAP --- */
     .stApp { 
         background-color: #050505 !important; 
         background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), 
@@ -46,21 +73,19 @@ st.markdown("""
         border-right: 1px solid #00f2ff;
     }
     
-    /* --- FIX SIDEBAR ICON: JANGAN TARGET SPAN --- */
-    /* Hanya ubah font untuk Header (h1-h3) dan Paragraf (p/label) */
+    /* --- FIX FONT SIDEBAR --- */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
     [data-testid="stSidebar"] p, .stMarkdown label, .stMarkdown p {
         color: #e0e0e0 !important;
         font-family: 'Orbitron', sans-serif !important;
     }
     
-    /* Warna teks Expander */
     [data-testid="stSidebar"] .streamlit-expanderHeader {
         color: #e0e0e0 !important;
         font-family: 'Orbitron', sans-serif !important;
     }
 
-    /* --- 2. TYPOGRAPHY UTAMA --- */
+    /* --- TYPOGRAPHY --- */
     h1 { 
         font-family: 'Orbitron', sans-serif; color: #00f2ff !important; text-transform: uppercase; 
         text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); text-align: center !important;
@@ -80,7 +105,7 @@ st.markdown("""
         text-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
     }
 
-    /* --- 3. GAMBAR & INPUT --- */
+    /* --- GAMBAR & INPUT --- */
     div[data-testid="stImage"] img {
         border: 2px solid #00f2ff !important; border-radius: 15px !important;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); max-height: 250px; object-fit: cover !important;
@@ -94,7 +119,7 @@ st.markdown("""
     }
     div[data-baseweb="select"] > div, div[data-baseweb="popover"] { background-color: #0f0f0f !important; color: #00f2ff !important; }
 
-    /* --- 4. TOMBOL (HIJAU & BIRU) --- */
+    /* --- TOMBOL --- */
     button[kind="secondary"] {
         width: 100%; background: linear-gradient(90deg, #00ff00, #008800) !important; 
         border: none !important; color: black !important; font-family: 'Orbitron', sans-serif !important; 
@@ -111,7 +136,7 @@ st.markdown("""
     }
     button[kind="primary"]:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 242, 255, 0.8); }
 
-    /* --- 5. RESULT CARD --- */
+    /* --- RESULT CARD & TABLE --- */
     .result-card {
         background-color: rgba(0, 20, 0, 0.9); border: 2px solid #00ff00;
         box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); padding: 20px; border-radius: 12px;
@@ -123,7 +148,6 @@ st.markdown("""
     .result-value { font-family: 'Orbitron'; color: #fff; font-size: 2.2em; font-weight: 700; text-shadow: 0 0 15px #00ff00; margin-bottom: 0; }
     .result-status { font-family: 'Orbitron'; font-size: 1.0em; font-weight: bold; margin-top: 5px; }
     
-    /* --- 6. TABEL CYBERPUNK --- */
     .cyber-card {
         background-color: rgba(10, 10, 10, 0.85); border: 1px solid #00f2ff;
         box-shadow: 0 0 20px rgba(0, 242, 255, 0.15); padding: 15px; border-radius: 12px;
@@ -145,7 +169,7 @@ st.markdown("""
     .footer-label { font-size: 0.9em; color: #fff; }
     .footer-value { font-size: 1.3em; color: #00f2ff; font-weight: 700; text-shadow: 0 0 10px #00f2ff; }
 
-    /* --- 7. TAB STYLING --- */
+    /* --- TABS --- */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: transparent; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] {
         height: 50px; background-color: #0a0a0a; border-radius: 5px 5px 0 0; color: #555;
