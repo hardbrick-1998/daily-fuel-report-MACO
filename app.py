@@ -5,21 +5,17 @@ import pandas as pd
 from datetime import datetime
 import time
 import os
-import streamlit as st
 import json
 import base64
+import re
 
 # ==========================================
-# LANGKAH 1 : KONFIGURASI TEMA & PWA (ANTI BOCOR)
+# LANGKAH 1 : KONFIGURASI TEMA & PWA
 # ==========================================
-
-# 1. LINK LOGO (RAW GITHUB)
 LOGO_URL = "https://raw.githubusercontent.com/hardbrick-1998/daily-fuel-report-MACO/607139af43502eb30bbd4ed8cf88da9c19ddd347/logo_terra.jpeg"
 
-# 2. KONFIGURASI HALAMAN DASAR
 st.set_page_config(page_title="TERRA FUEL MACO", page_icon=LOGO_URL, layout="wide")
 
-# 3. MEMBUAT MANIFEST KHUSUS UNTUK ANDROID
 manifest = {
     "name": "TERRA FUEL MACO",
     "short_name": "TERRA FUEL",
@@ -29,24 +25,14 @@ manifest = {
     "background_color": "#050505",
     "theme_color": "#00f2ff",
     "icons": [
-        {
-            "src": LOGO_URL,
-            "sizes": "192x192",
-            "type": "image/jpeg"
-        },
-        {
-            "src": LOGO_URL,
-            "sizes": "512x512",
-            "type": "image/jpeg"
-        }
+        {"src": LOGO_URL, "sizes": "192x192", "type": "image/jpeg"},
+        {"src": LOGO_URL, "sizes": "512x512", "type": "image/jpeg"}
     ]
 }
 manifest_json = json.dumps(manifest)
 b64_manifest = base64.b64encode(manifest_json.encode()).decode()
 href_manifest = f'data:application/manifest+json;base64,{b64_manifest}'
 
-# 4. SUNTIKKAN KODE KE HEAD HTML (RATA KIRI AGAR TIDAK BOCOR)
-# Perhatikan: Tidak ada spasi di depan tag <link> dan <meta>
 st.markdown(f"""
 <link rel="apple-touch-icon" href="{LOGO_URL}">
 <meta name="apple-mobile-web-app-title" content="TERRA FUEL">
@@ -55,12 +41,10 @@ st.markdown(f"""
 <link rel="manifest" href="{href_manifest}">
 """, unsafe_allow_html=True)
 
-# 5. CSS TEMA CYBERPUNK
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
     
-    /* --- FORCE BACKGROUND GELAP --- */
     .stApp { 
         background-color: #050505 !important; 
         background-image: linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px), 
@@ -73,19 +57,12 @@ st.markdown("""
         border-right: 1px solid #00f2ff;
     }
     
-    /* --- FIX FONT SIDEBAR --- */
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, 
-    [data-testid="stSidebar"] p, .stMarkdown label, .stMarkdown p {
-        color: #e0e0e0 !important;
-        font-family: 'Orbitron', sans-serif !important;
-    }
-    
-    [data-testid="stSidebar"] .streamlit-expanderHeader {
+    [data-testid="stSidebar"] p, .stMarkdown label, .stMarkdown p, [data-testid="stSidebar"] .streamlit-expanderHeader {
         color: #e0e0e0 !important;
         font-family: 'Orbitron', sans-serif !important;
     }
 
-    /* --- TYPOGRAPHY --- */
     h1 { 
         font-family: 'Orbitron', sans-serif; color: #00f2ff !important; text-transform: uppercase; 
         text-shadow: 0 0 20px rgba(0, 242, 255, 0.6); text-align: center !important;
@@ -105,7 +82,6 @@ st.markdown("""
         text-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
     }
 
-    /* --- GAMBAR & INPUT --- */
     div[data-testid="stImage"] img {
         border: 2px solid #00f2ff !important; border-radius: 15px !important;
         box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); max-height: 250px; object-fit: cover !important;
@@ -119,7 +95,6 @@ st.markdown("""
     }
     div[data-baseweb="select"] > div, div[data-baseweb="popover"] { background-color: #0f0f0f !important; color: #00f2ff !important; }
 
-    /* --- TOMBOL --- */
     button[kind="secondary"] {
         width: 100%; background: linear-gradient(90deg, #00ff00, #008800) !important; 
         border: none !important; color: black !important; font-family: 'Orbitron', sans-serif !important; 
@@ -136,7 +111,6 @@ st.markdown("""
     }
     button[kind="primary"]:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 242, 255, 0.8); }
 
-    /* --- RESULT CARD & TABLE --- */
     .result-card {
         background-color: rgba(0, 20, 0, 0.9); border: 2px solid #00ff00;
         box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); padding: 20px; border-radius: 12px;
@@ -169,7 +143,6 @@ st.markdown("""
     .footer-label { font-size: 0.9em; color: #fff; }
     .footer-value { font-size: 1.3em; color: #00f2ff; font-weight: 700; text-shadow: 0 0 10px #00f2ff; }
 
-    /* --- TABS --- */
     .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: transparent; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] {
         height: 50px; background-color: #0a0a0a; border-radius: 5px 5px 0 0; color: #555;
@@ -182,7 +155,6 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab-highlight"] { background-color: #00f2ff; }
 
-    /* HP RESPONSIVE */
     @media only screen and (max-width: 600px) {
         h1 { font-size: 20px !important; } h2 { font-size: 18px !important; } 
         .caption-text { font-size: 10px !important; }
@@ -194,25 +166,25 @@ st.markdown("""
         .result-value { font-size: 1.8em; }
     }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ==========================================
-# LANGKAH 2 : INISIALISASI & SYNC
+# LANGKAH 2 : INISIALISASI & SYNC (FIX PANDAS BUG)
 # ==========================================
 localS = LocalStorage()
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw"
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MASTER"
 
-# Auto Sync Logic
+# Auto Sync Logic (Pakai dtype=str)
 dex_queue = localS.getItem("dexter_historical_queue") or []
 if len(dex_queue) > 0:
     try:
         df_new = pd.DataFrame(dex_queue).astype(str)
         try:
-            df_old = conn.read(worksheet="HISTORICAL", ttl=0)
-            df_final = pd.concat([df_old, df_new], ignore_index=True)
+            df_old = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+            df_old = df_old.dropna(how='all')
+            df_final = pd.concat([df_old, df_new], ignore_index=True).astype(str)
             conn.update(worksheet="HISTORICAL", data=df_final)
         except:
             conn.update(worksheet="HISTORICAL", data=df_new)
@@ -225,11 +197,40 @@ if len(dex_queue) > 0:
 @st.cache_data(ttl=600)
 def load_master_data():
     try:
-        df = pd.read_csv(CSV_URL)
-        if 'Tinggi' in df.columns: df['Tinggi'] = pd.to_numeric(df['Tinggi'].astype(str).str.replace(',', '.'), errors='coerce')
-        if 'Liter' in df.columns: df['Liter'] = pd.to_numeric(df['Liter'].astype(str).str.replace(',', '.'), errors='coerce')
+        df = conn.read(worksheet="MASTER", ttl=600)
+        df.columns = df.columns.str.strip()
+
+        def super_cleaner(val):
+            if pd.isna(val): return None
+            val_str = str(val).strip()
+            val_str = re.sub(r'[^\d,\.-]', '', val_str)
+            if val_str == '': return None
+
+            dots = val_str.count('.')
+            commas = val_str.count(',')
+
+            if commas == 1 and dots == 0:
+                val_str = val_str.replace(',', '.') 
+            elif commas == 0 and dots == 1:
+                pass 
+            elif commas > 0 and dots > 0:
+                if val_str.rfind(',') > val_str.rfind('.'): 
+                    val_str = val_str.replace('.', '').replace(',', '.') 
+                else: 
+                    val_str = val_str.replace(',', '') 
+            elif commas > 0 and dots == 0: 
+                val_str = val_str.replace(',', '') 
+            elif dots > 1: 
+                val_str = val_str.replace('.', '') 
+
+            return pd.to_numeric(val_str, errors='coerce')
+
+        if 'Tinggi' in df.columns: df['Tinggi'] = df['Tinggi'].apply(super_cleaner)
+        if 'Liter' in df.columns: df['Liter'] = df['Liter'].apply(super_cleaner)
+
         return df.dropna(subset=['Tinggi', 'Liter'])
-    except: return pd.DataFrame()
+    except Exception as e: 
+        return pd.DataFrame()
 
 df_master = load_master_data()
 
@@ -239,32 +240,31 @@ df_master = load_master_data()
 with st.sidebar:
     st.markdown("### 🖥️ SYSTEM STATUS")
     st.success("DEXTER ONLINE")
-    st.info(f"Connected to site : MACO")
+    
+    if not df_master.empty:
+        st.info(f"✅ SITE MACO\n\n📊 {len(df_master)} Baris Master Terbaca")
+    else:
+        st.error("⚠️ DATABASE KOSONG / ERROR!")
 
 st.markdown("""<div class="title-box"><h1>📋 TERRA FUEL MACO</h1></div>""", unsafe_allow_html=True)
 st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO HAULING</p>', unsafe_allow_html=True)
 st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-top: -15px;">APPS NAME: DATA FUEL STOCK</p>', unsafe_allow_html=True)
 
-# KONFIGURASI TABS
 tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD"])
-
-# Variabel global df_filtered (agar bisa dibaca fitur hapus di sidebar)
 df_filtered = pd.DataFrame()
 
 # ==========================================
-# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN (FIX BACA TANGGAL)
+# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN
 # ==========================================
 with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # 1. FORM INPUT
     c1, c2, c3 = st.columns(3)
     with c1: admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Nama...")
     with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now(), format="DD/MM/YYYY")
     with c3: shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
 
     st.markdown("---")
-
     col_kiri, col_kanan = st.columns([1.5, 1])
 
     with col_kiri:
@@ -291,14 +291,8 @@ with tab_input:
     with col_kanan:
         st.markdown("### 📏 SOUNDING")
         with st.container():
-            # Input default kosong (None), format 1 desimal
             tinggi_cm = st.number_input(
-                "SILAHKAN ISI ANGKA SOUNDINGAN (CM)", 
-                min_value=0.0, 
-                step=0.1, 
-                format="%.1f", 
-                value=None,       
-                placeholder="0.0" 
+                "SILAHKAN ISI ANGKA SOUNDINGAN (CM)", min_value=0.0, step=0.1, format="%.1f", value=None, placeholder="0.0" 
             )
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -308,16 +302,13 @@ with tab_input:
 
             result_placeholder = st.empty()
 
-    # 2. LOGIKA HITUNG & SIMPAN
     def hitung_volume_solar(tank_id, depth_val):
         if df_master.empty: return None, "DB Empty"
         df_tangki = df_master[df_master['Tank'] == tank_id]
         if df_tangki.empty: return None, "Tank Not Found"
         
-        # Validasi Max Tinggi
         max_tinggi_db = df_tangki['Tinggi'].max()
-        if depth_val > max_tinggi_db:
-            return None, "OVERFLOW"
+        if depth_val > max_tinggi_db: return None, "OVERFLOW"
             
         idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
         return df_tangki.loc[idx, 'Liter'], "OK"
@@ -343,20 +334,34 @@ with tab_input:
                 
                 if tombol_submit:
                     if admin_nama:
-                        # SIMPAN STRING AGAR KONSISTEN (DD-MM-YYYY)
                         tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
                         
+                        # FUNGSI ANTI-DECIMAL TAMBAHAN (Hapus .0)
+                        def format_angka_aman(val):
+                            val_str = str(val)
+                            return val_str[:-2] if val_str.endswith(".0") else val_str
+
                         new_record = {
-                            "Nama": admin_nama, 
-                            "Tanggal": tgl_simpan, 
-                            "Shift": shift, "Tangki": tangki_pilihan,
-                            "Tinggi (cm)": tinggi_cm, "Volume (L)": volume_hasil
+                            "Nama": str(admin_nama), 
+                            "Tanggal": str(tgl_simpan), 
+                            "Shift": str(shift), 
+                            "Tangki": str(tangki_pilihan),
+                            "Tinggi (cm)": format_angka_aman(tinggi_cm), 
+                            "Volume (L)": format_angka_aman(volume_hasil)
                         }
+                        
                         with st.spinner("Mengirim ke Server..."):
                             try:
-                                df_old = conn.read(worksheet="HISTORICAL", ttl=0)
-                                df_new_row = pd.DataFrame([new_record]).astype(str)
+                                # BACA SEBAGAI TEXT MURNI (dtype=str) agar data lama tidak dirusak Pandas
+                                df_old = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+                                df_old = df_old.dropna(how='all') # Bersihkan baris kosong
+                                
+                                df_new_row = pd.DataFrame([new_record])
                                 df_final = pd.concat([df_old, df_new_row], ignore_index=True)
+                                
+                                # Pastikan semunya murni string sebelum ditimpa ke Sheets
+                                df_final = df_final.astype(str)
+                                
                                 conn.update(worksheet="HISTORICAL", data=df_final)
                                 if len(dex_queue) > 0: localS.deleteAll()
                                 st.toast("SUKSES: DATA TERKIRIM!", icon="🚀")
@@ -365,12 +370,12 @@ with tab_input:
                                 localS.setItem("dexter_historical_queue", dex_queue)
                                 st.toast("OFFLINE: Data disimpan di HP", icon="💾")
                         time.sleep(1.5)
+                        st.cache_data.clear() # Paksa refresh memory
                         st.rerun()
                     else: st.warning("⚠️ MOHON ISI NAMA ADMIN.")
             else: st.error("DATA TANGKI TIDAK DITEMUKAN.")
         else: st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
 
-    # 3. TABEL LAPORAN (FILTERING LEBIH KUAT)
     st.markdown("---")
     st.markdown("""
         <div style="text-align: center; border: 2px solid #00f2ff; padding: 10px; background: rgba(0, 242, 255, 0.05); border-radius: 10px;">
@@ -387,18 +392,15 @@ with tab_input:
     </div><br>""", unsafe_allow_html=True)
 
     try:
-        df_report = conn.read(worksheet="HISTORICAL", ttl=0)
+        # Tambahkan dtype=str
+        df_report = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+        df_report = df_report.dropna(how='all')
         
         if not df_report.empty:
-            # === FIX PENTING: PAKSA FORMAT STRING DULU ===
             df_report['Tanggal'] = df_report['Tanggal'].astype(str)
-            
-            # Parsing Tanggal (dayfirst=True mendahulukan Tanggal daripada Bulan)
             df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
-            
             df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
             
-            # FILTER DATA
             df_filtered = df_report[
                 (df_report['Tanggal_dt'].dt.date == tgl_laporan) & 
                 (df_report['Shift'] == shift_selected)
@@ -411,7 +413,9 @@ with tab_input:
                 rows_html = ""
                 for idx, row in df_filtered.iterrows():
                     vol = float(row['Volume (L)'])
-                    tinggi = float(row['Tinggi (cm)'])
+                    tinggi_raw = str(row['Tinggi (cm)'])
+                    tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
+                    
                     if vol > 15000: status_cls, status_txt = "status-aman", "AMAN"
                     elif vol > 5000: status_cls, status_txt = "status-cukup", "CUKUP"
                     else: status_cls, status_txt = "status-kurang", "KURANG"
@@ -438,26 +442,23 @@ with tab_input:
 
 
 # ==========================================
-# LANGKAH 5 : DASHBOARD ANALYTICS (FIX BACA TANGGAL)
+# LANGKAH 5 : DASHBOARD ANALYTICS
 # ==========================================
 with tab_dashboard:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 📈 ANALISIS DATA HISTORIS")
     
     try:
-        df_dash = conn.read(worksheet="HISTORICAL", ttl=0)
+        # Tambahkan dtype=str
+        df_dash = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+        df_dash = df_dash.dropna(how='all')
         
         if not df_dash.empty:
-            # === FIX PENTING: PAKSA FORMAT STRING DULU SEBELUM PARSING ===
             df_dash['Tanggal'] = df_dash['Tanggal'].astype(str)
             df_dash['Tanggal_dt'] = pd.to_datetime(df_dash['Tanggal'], dayfirst=True, errors='coerce')
-            
-            # Buang data yang tanggalnya ERROR (NaT) agar grafik tidak rusak
             df_dash = df_dash.dropna(subset=['Tanggal_dt'])
-            
             df_dash['Volume (L)'] = pd.to_numeric(df_dash['Volume (L)'], errors='coerce').fillna(0)
             
-            # KPI
             col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
             total_recorded = df_dash['Volume (L)'].sum()
             total_entries = len(df_dash)
@@ -476,15 +477,12 @@ with tab_dashboard:
             with col_kpi3: st.markdown(neon_metric("AVG VOLUME", f"{avg_volume:,.0f} L"), unsafe_allow_html=True)
             
             st.markdown("---")
-            
-            # CHART
             st.markdown("##### 🚛 TOTAL VOLUME PER TANGKI")
             fuel_per_tank = df_dash.groupby("Tangki")['Volume (L)'].sum().sort_values(ascending=False)
             st.bar_chart(fuel_per_tank, color="#00f2ff")
             
             st.markdown("---")
             st.markdown("##### 📅 TREN HARIAN")
-            # Group by Tanggal (Format Indo DD-MM-YYYY)
             daily_trend = df_dash.groupby(df_dash['Tanggal_dt'].dt.strftime('%d-%m-%Y'))['Volume (L)'].sum()
             st.line_chart(daily_trend, color="#00ff00")
             
@@ -513,7 +511,7 @@ with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN / PENGAWAS)"):
         mapping_index = {} 
         
         for idx, row in df_filtered.iterrows():
-            tinggi_val = float(row['Tinggi (cm)'])
+            tinggi_val = float(row['Tinggi (cm)']) if str(row['Tinggi (cm)']).replace('.', '', 1).isdigit() else 0.0
             label = f"{row['Tangki']} | {tinggi_val} cm | {row['Volume (L)']:,.0f} L"
             pilihan_hapus.append(label)
             mapping_index[label] = row 
@@ -527,25 +525,24 @@ with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN / PENGAWAS)"):
                 
                 with st.spinner("Mencari & Menghapus 1 Data..."):
                     try:
-                        df_current = conn.read(worksheet="HISTORICAL", ttl=0)
+                        # WAJIB BACA STRING
+                        df_current = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+                        df_current = df_current.dropna(how='all')
                         
-                        # LOGIKA HAPUS: STRING MATCHING AGAR AMAN
-                        # Pastikan format Tanggal String sama persis
                         matches = df_current[
-                            (df_current['Tanggal'].astype(str) == str(row_target['Tanggal'])) &
-                            (df_current['Shift'] == row_target['Shift']) &
-                            (df_current['Tangki'] == row_target['Tangki']) &
-                            (df_current['Tinggi (cm)'].astype(str) == str(row_target['Tinggi (cm)']))
+                            (df_current['Tanggal'].astype(str).str.strip() == str(row_target['Tanggal']).strip()) &
+                            (df_current['Shift'].astype(str).str.strip() == str(row_target['Shift']).strip()) &
+                            (df_current['Tangki'].astype(str).str.strip() == str(row_target['Tangki']).strip()) &
+                            (df_current['Tinggi (cm)'].astype(str).str.strip() == str(row_target['Tinggi (cm)']).strip())
                         ]
                         
                         if not matches.empty:
-                            # HAPUS INDEX TERAKHIR (SAFE MODE)
                             last_match_index = matches.index[-1]
                             df_updated = df_current.drop(last_match_index)
-                            
                             conn.update(worksheet="HISTORICAL", data=df_updated)
                             st.toast("1 BARIS BERHASIL DIHAPUS!", icon="🗑️")
                             time.sleep(1.5)
+                            st.cache_data.clear() # Paksa refresh
                             st.rerun()
                         else:
                             st.warning("Data sudah tidak ada di server.")
