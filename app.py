@@ -167,6 +167,45 @@ st.markdown("""
         .footer-value { font-size: 1.0em !important; }
         .result-value { font-size: 1.8em; }
     }
+            
+    /* --- TOMBOL READY (HIJAU NEON) --- */
+    .st-key-ready_btn button {
+        background: linear-gradient(90deg, #00ff00, #004400) !important;
+        color: white !important;
+        border: 1px solid #00ff00 !important;
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.4) !important;
+        font-family: 'Orbitron', sans-serif !important;
+    }
+    .st-key-ready_btn button:hover {
+        box-shadow: 0 0 25px rgba(0, 255, 0, 0.8) !important;
+        transform: scale(1.02);
+    }
+
+    /* --- TOMBOL BREAKDOWN (MERAH NEON) --- */
+    .st-key-bd_btn button {
+        background: linear-gradient(90deg, #ff003c, #770000) !important;
+        color: white !important;
+        border: 1px solid #ff003c !important;
+        box-shadow: 0 0 15px rgba(255, 0, 60, 0.4) !important;
+        font-family: 'Orbitron', sans-serif !important;
+    }
+    .st-key-bd_btn button:hover {
+        box-shadow: 0 0 25px rgba(255, 0, 60, 0.8) !important;
+        transform: scale(1.02);
+    }
+
+    /* --- TOMBOL BATAL (MERAH TUA) --- */
+    .st-key-batal_btn button {
+        background: #2a0000 !important;
+        color: #ff6666 !important;
+        border: 1px solid #550000 !important;
+        font-family: 'Orbitron', sans-serif !important;
+        margin-top: 10px !important;
+    }
+    .st-key-batal_btn button:hover {
+        background: #440000 !important;
+        color: white !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -420,6 +459,10 @@ with tab_input:
     with col_kanan:
         st.markdown("### 📏 SOUNDING")
         with st.container():
+            # State untuk memunculkan tombol konfirmasi status unit
+            if "konfirmasi_kirim" not in st.session_state:
+                st.session_state.konfirmasi_kirim = False
+
             tinggi_cm = st.number_input(
                 "SILAHKAN ISI ANGKA SOUNDINGAN (CM)", min_value=0.0, step=0.1, format="%.1f", value=None, placeholder="0.0" 
             )
@@ -428,6 +471,10 @@ with tab_input:
             c_btn1, c_btn2 = st.columns(2)
             with c_btn1: tombol_cek = st.button("🔍 CEK STOCK FUEL", type="secondary")
             with c_btn2: tombol_submit = st.button("🔌 KIRIM LAPORAN", type="primary")
+
+            # Jika tombol kirim ditekan, aktifkan mode konfirmasi
+            if tombol_submit:
+                st.session_state.konfirmasi_kirim = True
 
             result_placeholder = st.empty()
 
@@ -442,12 +489,14 @@ with tab_input:
         idx = (df_tangki['Tinggi'] - depth_val).abs().idxmin()
         return df_tangki.loc[idx, 'Liter'], "OK"
 
-    if tombol_cek or tombol_submit:
+    # Logika eksekusi: dijalankan jika tombol CEK diklik ATAU sedang dalam mode konfirmasi
+    if tombol_cek or st.session_state.konfirmasi_kirim:
         if tinggi_cm is not None:
             volume_hasil, status_msg = hitung_volume_solar(tangki_pilihan, tinggi_cm)
             
             if status_msg == "OVERFLOW":
                 st.warning(f"⚠️ NILAI ANGKA SOUNDING TERLALU TINGGI! (Maks: {df_master[df_master['Tank']==tangki_pilihan]['Tinggi'].max()} cm). COBA PERIKSA KEMBALI.")
+                st.session_state.konfirmasi_kirim = False # Batal otomatis jika salah angka
             
             elif volume_hasil is not None:
                 # Cek Status Dinamis sesuai Excel (Sync dengan 4 output)
@@ -460,49 +509,85 @@ with tab_input:
                     <div class="result-status" style="color: {color_hex}; text-shadow: 0 0 15px {color_hex};">STATUS: {status_txt}</div>
                 </div>""", unsafe_allow_html=True)
                 
-                if tombol_submit:
+                # JIKA TOMBOL KIRIM LAPORAN DITEKAN (MUNCULKAN PILIHAN STATUS UNIT)
+                if st.session_state.konfirmasi_kirim:
                     if admin_nama:
-                        tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
+                        st.markdown("<br>", unsafe_allow_html=True)
                         
-                        # FUNGSI ANTI-DECIMAL TAMBAHAN (Hapus .0)
-                        def format_angka_aman(val):
-                            val_str = str(val)
-                            return val_str[:-2] if val_str.endswith(".0") else val_str
+                        # --- REVISI KOTAK TEKS (DINAMIS DENGAN NAMA TANGKI) ---
+                        st.markdown(f"""
+                            <div style="text-align: center; border: 1px solid #ffaa00; padding: 10px; background: rgba(255, 170, 0, 0.1); border-radius: 10px; margin-bottom: 10px;">
+                                <h4 style="font-family: 'Orbitron'; color: #ffaa00; margin: 0;">🚦 PILIH STATUS KESIAPAN TANGKI {tangki_pilihan}</h4>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        # --------------------------------------------------------
+                        
+                        col_ready, col_bd = st.columns(2)
+                        with col_ready: 
+                            klik_ready = st.button("🟢 READY", use_container_width=True, key="ready_btn")
+                        with col_bd: 
+                            klik_bd = st.button("🔴 BREAKDOWN", use_container_width=True, key="bd_btn")
+                        
+                        # Tombol Batal jika berubah pikiran
+                        klik_batal = st.button("❌ BATAL", use_container_width=True, key="batal_btn")
+                        
+                        if klik_batal:
+                            st.session_state.konfirmasi_kirim = False
+                            st.rerun()
+                        
+                        # JIKA SALAH SATU STATUS DIKLIK -> SIMPAN KE DATABASE
+                        if klik_ready or klik_bd:
+                            status_unit_pilihan = "READY" if klik_ready else "BREAKDOWN"
+                            tgl_simpan = tgl_laporan.strftime("%d-%m-%Y")
+                            
+                            # FUNGSI ANTI-DECIMAL TAMBAHAN (Hapus .0)
+                            def format_angka_aman(val):
+                                val_str = str(val)
+                                return val_str[:-2] if val_str.endswith(".0") else val_str
 
-                        new_record = {
-                            "Nama": str(admin_nama), 
-                            "Tanggal": str(tgl_simpan), 
-                            "Shift": str(shift), 
-                            "Tangki": str(tangki_pilihan),
-                            "Tinggi (cm)": format_angka_aman(tinggi_cm), 
-                            "Volume (L)": format_angka_aman(volume_hasil)
-                        }
-                        
-                        with st.spinner("Mengirim ke Server..."):
-                            try:
-                                # BACA SEBAGAI TEXT MURNI (dtype=str) agar data lama tidak dirusak Pandas
-                                df_old = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
-                                df_old = df_old.dropna(how='all') # Bersihkan baris kosong
-                                
-                                df_new_row = pd.DataFrame([new_record])
-                                df_final = pd.concat([df_old, df_new_row], ignore_index=True)
-                                
-                                # Pastikan semunya murni string sebelum ditimpa ke Sheets
-                                df_final = df_final.astype(str)
-                                
-                                conn.update(worksheet="HISTORICAL", data=df_final)
-                                if len(dex_queue) > 0: localS.deleteAll()
-                                st.toast("SUKSES: DATA TERKIRIM!", icon="🚀")
-                            except:
-                                dex_queue.append(new_record)
-                                localS.setItem("dexter_historical_queue", dex_queue)
-                                st.toast("OFFLINE: Data disimpan di HP", icon="💾")
-                        time.sleep(1.5)
-                        st.cache_data.clear() # Paksa refresh memory
-                        st.rerun()
-                    else: st.warning("⚠️ MOHON ISI NAMA ADMIN.")
-            else: st.error("DATA TANGKI TIDAK DITEMUKAN.")
-        else: st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
+                            # Kolom 'Status Unit' ikut dimasukkan ke database
+                            new_record = {
+                                "Nama": str(admin_nama), 
+                                "Tanggal": str(tgl_simpan), 
+                                "Shift": str(shift), 
+                                "Tangki": str(tangki_pilihan),
+                                "Tinggi (cm)": format_angka_aman(tinggi_cm), 
+                                "Volume (L)": format_angka_aman(volume_hasil),
+                                "Status Unit": status_unit_pilihan
+                            }
+                            
+                            with st.spinner(f"Mengirim Laporan (Unit: {status_unit_pilihan})..."):
+                                try:
+                                    # BACA SEBAGAI TEXT MURNI (dtype=str) agar data lama tidak dirusak Pandas
+                                    df_old = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+                                    df_old = df_old.dropna(how='all') # Bersihkan baris kosong
+                                    
+                                    df_new_row = pd.DataFrame([new_record])
+                                    df_final = pd.concat([df_old, df_new_row], ignore_index=True)
+                                    
+                                    # Pastikan semunya murni string sebelum ditimpa ke Sheets
+                                    df_final = df_final.astype(str)
+                                    
+                                    conn.update(worksheet="HISTORICAL", data=df_final)
+                                    if len(dex_queue) > 0: localS.deleteAll()
+                                    st.toast(f"SUKSES: DATA TERKIRIM! (Status: {status_unit_pilihan})", icon="🚀")
+                                except:
+                                    dex_queue.append(new_record)
+                                    localS.setItem("dexter_historical_queue", dex_queue)
+                                    st.toast("OFFLINE: Data disimpan di HP", icon="💾")
+                            time.sleep(1.5)
+                            st.session_state.konfirmasi_kirim = False # Tutup mode konfirmasi
+                            st.cache_data.clear() # Paksa refresh memory
+                            st.rerun()
+                    else: 
+                        st.warning("⚠️ MOHON ISI NAMA ANDA.")
+                        st.session_state.konfirmasi_kirim = False
+            else: 
+                st.error("DATA TANGKI TIDAK DITEMUKAN.")
+                st.session_state.konfirmasi_kirim = False
+        else: 
+            st.warning("ANGKA SOUNDING TIDAK BOLEH KOSONG.")
+            st.session_state.konfirmasi_kirim = False
 
     st.markdown("---")
     st.markdown("""
@@ -563,18 +648,24 @@ with tab_input:
                 st.markdown(final_table_html, unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
 
-                # TOMBOL DOWNLOAD GAMBAR LAPORAN
+                # ==========================================
+                # TOMBOL REFRESH & DOWNLOAD (VERSI RAPI SEUKURAN)
+                # ==========================================
                 col_btn1, col_btn2 = st.columns(2)
+                
                 with col_btn1:
-                    if st.button("🔄 REFRESH DATA"): st.cache_data.clear(); st.rerun()
+                    if st.button("🔄 REFRESH", use_container_width=True): 
+                        st.cache_data.clear()
+                        st.rerun()
+                        
                 with col_btn2:
                     img_buffer = generate_report_image(df_filtered, tgl_pilih_indo, shift_selected, total_fuel)
                     st.download_button(
-                        label="📥 DOWNLOAD REPORT (.PNG)",
+                        label="📥 DOWNLOAD REPORT",
                         data=img_buffer,
-                        file_name=f"Fuel Stock Report_{tgl_pilih_indo}_Akhir_{shift_selected}.png",
+                        file_name=f"Laporan_Fuel_{tgl_pilih_indo}_{shift_selected}.png",
                         mime="image/png",
-                        type="primary",
+                        type="primary", 
                         use_container_width=True
                     )
 
