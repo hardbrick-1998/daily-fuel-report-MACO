@@ -568,17 +568,35 @@ with tab_input:
                                     # Pastikan semunya murni string sebelum ditimpa ke Sheets
                                     df_final = df_final.astype(str)
                                     
+                                    # Tulis ke database
                                     conn.update(worksheet="HISTORICAL", data=df_final)
-                                    if len(dex_queue) > 0: localS.deleteAll()
+                                    
+                                    # Bersihkan antrian offline jika ada
+                                    if len(dex_queue) > 0: 
+                                        try: localS.deleteAll()
+                                        except: pass
+                                        
                                     st.toast(f"SUKSES: DATA TERKIRIM! (Status: {status_unit_pilihan})", icon="🚀")
-                                except:
+                                    time.sleep(1.5)
+                                    st.session_state.konfirmasi_kirim = False # Tutup mode konfirmasi
+                                    st.cache_data.clear() # Paksa refresh memory
+                                    st.rerun()
+
+                                except Exception as e:
+                                    # MEMUNCULKAN ERROR ASLI KE LAYAR AGAR TIDAK HANG
+                                    st.error(f"⚠️ Gagal Mengirim: {e}")
+                                    
+                                    # Tetap simpan ke offline mode
                                     dex_queue.append(new_record)
-                                    localS.setItem("dexter_historical_queue", dex_queue)
-                                    st.toast("OFFLINE: Data disimpan di HP", icon="💾")
-                            time.sleep(1.5)
-                            st.session_state.konfirmasi_kirim = False # Tutup mode konfirmasi
-                            st.cache_data.clear() # Paksa refresh memory
-                            st.rerun()
+                                    try: localS.setItem("dexter_historical_queue", dex_queue)
+                                    except: pass
+                                    
+                                    st.toast("OFFLINE: Data disimpan sementara di HP", icon="💾")
+                                    
+                                    # Beri waktu 3 detik untuk baca error sebelum tutup
+                                    time.sleep(3.0) 
+                                    st.session_state.konfirmasi_kirim = False
+                                    st.rerun()
                     else: 
                         st.warning("⚠️ MOHON ISI NAMA ANDA.")
                         st.session_state.konfirmasi_kirim = False
