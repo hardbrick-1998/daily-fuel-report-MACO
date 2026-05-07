@@ -293,39 +293,42 @@ df_filtered = pd.DataFrame()
 # ==========================================
 # LANGKAH 4 : FUNGSI PEMBUAT GAMBAR LAPORAN
 # ==========================================
+
 def generate_report_image(df_print, tanggal, shift, total_vol):
-    # Setup Gambar (Tinggi disesuaikan dengan jumlah baris + extra space untuk footer area)
-    fig, ax = plt.subplots(figsize=(10, len(df_print)*0.6 + 4.5))
+    fig, ax = plt.subplots(figsize=(10, (len(df_print) + 4) * 0.7 + 1))
     fig.patch.set_facecolor('#050505')
     ax.axis('off')
 
     plt.text(0.5, 0.96, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color='#00f2ff', fontsize=18, fontweight='bold', transform=fig.transFigure)
     plt.text(0.5, 0.92, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color='#00ff00', fontsize=12, transform=fig.transFigure)
 
-    # Header kolom baru: Ada tambahan 'AREA'
     col_labels = ['TANGKI', 'AREA', 'TINGGI (cm)', 'VOLUME (L)', 'STATUS']
     table_vals = []
+    row_colors = []
     
-    # Penampung total per area
-    area_totals = {"MINING": 0, "HAULING": 0, "PORT": 0}
+    list_area = ["HAULING", "PORT", "MINING"]
     
-    for _, row in df_print.iterrows():
-        vol = float(row['Volume (L)'])
-        tinggi_raw = str(row['Tinggi (cm)'])
-        tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
+    for area_target in list_area:
+        area_sum = 0
+        has_data = False
         
-        # Panggil fungsi status yang baru (sekarang return 4 nilai)
-        _, status_txt, _, area_val = get_status_info(row['Tangki'], vol)
+        for _, row in df_print.iterrows():
+            vol = float(row['Volume (L)'])
+            tinggi_raw = str(row['Tinggi (cm)'])
+            tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
+            
+            _, status_txt, _, area_val = get_status_info(row['Tangki'], vol)
+            
+            if area_val.upper().strip() == area_target:
+                table_vals.append([row['Tangki'], area_val, f"{tinggi:.1f}", f"{vol:,.0f}", status_txt])
+                row_colors.append(None) # Baris data normal
+                area_sum += vol
+                has_data = True
         
-        table_vals.append([row['Tangki'], area_val, f"{tinggi:.1f}", f"{vol:,.0f}", status_txt])
-        
-        # Hitung akumulasi per area (Case Insensitive)
-        key_area = area_val.upper().strip()
-        if key_area in area_totals:
-            area_totals[key_area] += vol
-        else:
-            # Jika ada area baru selain 3 itu, tetap hitung tapi tidak masuk kategori khusus
-            pass
+        if has_data:
+            # Baris Subtotal
+            table_vals.append(["", "", f"TOTAL STOCK {area_target} : ", f"{area_sum:,.0f} L", ""])
+            row_colors.append("#003344") # Warna biru neon solid
 
     # Buat Tabel
     table = ax.table(cellText=table_vals, colLabels=col_labels, loc='center', cellLoc='center')
@@ -333,43 +336,52 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     table.set_fontsize(11)
     table.scale(1, 2.8)
 
-    # Styling Tabel (Cyberpunk Theme)
+    # Styling & Solid Color Merge
     for (i, j), cell in table.get_celld().items():
-        cell.set_edgecolor('#00f2ff')
+        # Set warna garis pembatas agar senada dengan neon (tidak hitam)
+        cell.set_edgecolor('#00f2ff') 
+        
         if i == 0: # Header
             cell.set_facecolor('#002233')
             cell.get_text().set_color('#00f2ff')
             cell.get_text().set_fontweight('bold')
-        else: # Body
-            cell.set_facecolor('#0f0f0f')
-            cell.get_text().set_color('#ffffff')
-            if j == 4: # Kolom Status
-                stat = table_vals[i-1][4]
-                if stat == "AMAN": cell.get_text().set_color('#00ff00')
-                elif stat == "CUKUP": cell.get_text().set_color('#ffff00')
-                else: cell.get_text().set_color('#ff0044')
+        else:
+            bg_color = row_colors[i-1]
+            if bg_color: # INI BARIS SUBTOTAL
+                # Warnai SEMUA sel di baris ini dengan biru neon tanpa terkecuali
+                cell.set_facecolor(bg_color)
+                cell.get_text().set_color('#00f2ff')
                 cell.get_text().set_fontweight('bold')
-
-    # Bagian Footer: Total Per Area & Total Global
-    y_pos = 0.18 # Koordinat mulai tulisan footer
-    
-    # Summary per Area
-    plt.text(0.2, y_pos, f"Total Mining : {area_totals['MINING']:,.0f} L", color='#e0e0e0', fontsize=12, fontweight='bold', transform=fig.transFigure)
-    plt.text(0.2, y_pos - 0.04, f"Total Hauling: {area_totals['HAULING']:,.0f} L", color='#e0e0e0', fontsize=12, fontweight='bold', transform=fig.transFigure)
-    plt.text(0.2, y_pos - 0.08, f"Total Port   : {area_totals['PORT']:,.0f} L", color='#e0e0e0', fontsize=12, fontweight='bold', transform=fig.transFigure)
-    
-    # Garis Pembatas Putus-putus
-    plt.text(0.5, y_pos - 0.12, "--------------------------------------------------", ha='center', color='#444', transform=fig.transFigure)
-    
-    # Total Global
-    plt.text(0.5, y_pos - 0.16, f"TOTAL STOCK FUEL ALL AREA: {total_vol:,.0f} LITER", ha='center', va='center', color='#00f2ff', fontsize=14, fontweight='bold', transform=fig.transFigure)
+                
+                # Sembunyikan garis antar kolom 0, 1, dan 2 agar terlihat menyatu sempurna
+                if j == 0:
+                    cell.visible_edges = 'LTB'
+                elif j == 1:
+                    cell.visible_edges = 'TB'
+                elif j == 2:
+                    cell.visible_edges = 'RTB'
+                    cell.get_text().set_ha('right') # Rata kanan teks label
+                elif j == 3:
+                    # Sel angka volume tetap kotak tapi background tetap biru neon
+                    cell.visible_edges = 'LRTB'
+                    cell.get_text().set_color('#ffffff') # Angka dibuat putih biar kontras
+                else:
+                    cell.visible_edges = 'RTB'
+            else: # INI BARIS DATA BIASA
+                cell.set_facecolor('#0f0f0f')
+                cell.get_text().set_color('#ffffff')
+                if j == 4: 
+                    stat = table_vals[i-1][4]
+                    if stat == "AMAN": cell.get_text().set_color('#00ff00')
+                    elif stat == "CUKUP": cell.get_text().set_color('#ffff00')
+                    elif stat == "KURANG": cell.get_text().set_color('#ff0044')
+                    cell.get_text().set_fontweight('bold')
 
     buf = io.BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight', dpi=200, facecolor=fig.get_facecolor())
     buf.seek(0)
     plt.close(fig)
     return buf
-
 # ==========================================
 # LANGKAH 5 : INPUT DATA & LAPORAN HARIAN
 # ==========================================
@@ -438,8 +450,8 @@ with tab_input:
                 st.warning(f"⚠️ NILAI ANGKA SOUNDING TERLALU TINGGI! (Maks: {df_master[df_master['Tank']==tangki_pilihan]['Tinggi'].max()} cm). COBA PERIKSA KEMBALI.")
             
             elif volume_hasil is not None:
-                # Cek Status Dinamis sesuai Excel
-                _, status_txt, color_hex = get_status_info(tangki_pilihan, volume_hasil)
+                # Cek Status Dinamis sesuai Excel (Sync dengan 4 output)
+                _, status_txt, color_hex, _ = get_status_info(tangki_pilihan, volume_hasil)
 
                 result_placeholder.markdown(f"""
                 <div class="result-card">
@@ -532,9 +544,9 @@ with tab_input:
                     tinggi_raw = str(row['Tinggi (cm)'])
                     tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
                     
-                    if vol > 15000: status_cls, status_txt = "status-aman", "AMAN"
-                    elif vol > 5000: status_cls, status_txt = "status-cukup", "CUKUP"
-                    else: status_cls, status_txt = "status-kurang", "KURANG"
+                    # Panggil status dari Excel untuk Frontend Web
+                    status_cls, status_txt, _, _ = get_status_info(row['Tangki'], vol)
+                    
                     rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
 
                 final_table_html = f"""
