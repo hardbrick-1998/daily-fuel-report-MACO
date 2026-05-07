@@ -8,6 +8,8 @@ import os
 import json
 import base64
 import re
+import io
+import matplotlib.pyplot as plt
 
 # ==========================================
 # LANGKAH 1 : KONFIGURASI TEMA & PWA
@@ -232,7 +234,31 @@ def load_master_data():
     except Exception as e: 
         return pd.DataFrame()
 
+@st.cache_data(ttl=600)
+def load_settings():
+    try:
+        df_set = conn.read(worksheet="SETTING_TANGKI", ttl=600)
+        df_set.columns = df_set.columns.str.strip()
+        return df_set.dropna(subset=['Tank'])
+    except: return pd.DataFrame()
+
 df_master = load_master_data()
+df_settings = load_settings()
+
+# LOGIKA DINAMIS STATUS TANGKI
+def get_status_info(tank_id, volume_val):
+    batas_aman, batas_cukup = 15000, 5000 # Default pengaman
+    if not df_settings.empty and 'Tank' in df_settings.columns:
+        match = df_settings[df_settings['Tank'].astype(str).str.strip() == str(tank_id).strip()]
+        if not match.empty:
+            batas_aman = pd.to_numeric(match['Min_Aman'].values[0], errors='coerce')
+            batas_cukup = pd.to_numeric(match['Min_Cukup'].values[0], errors='coerce')
+            
+    if volume_val >= batas_aman: return "status-aman", "AMAN", "#00ff00"
+    elif volume_val >= batas_cukup: return "status-cukup", "CUKUP", "#ffff00"
+    else: return "status-kurang", "KURANG", "#ff0044"
+
+
 
 # ==========================================
 # LANGKAH 3 : HEADER UTAMA & SIDEBAR
@@ -247,20 +273,71 @@ with st.sidebar:
         st.error("⚠️ DATABASE KOSONG / ERROR!")
 
 st.markdown("""<div class="title-box"><h1>📋 TERRA FUEL MACO</h1></div>""", unsafe_allow_html=True)
-st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO HAULING</p>', unsafe_allow_html=True)
-st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-top: -15px;">APPS NAME: DATA FUEL STOCK</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text">DEXTER PROJECT | FOG MACO</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-top: -15px;">APPS NAME: DAILY FUEL STOCK REPORT</p>', unsafe_allow_html=True)
 
 tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD"])
 df_filtered = pd.DataFrame()
 
+
 # ==========================================
-# LANGKAH 4 : INPUT DATA & LAPORAN HARIAN
+# LANGKAH 4 : FUNGSI PEMBUAT GAMBAR LAPORAN
+# ==========================================
+def generate_report_image(df_print, tanggal, shift, total_vol):
+    fig, ax = plt.subplots(figsize=(8, len(df_print)*0.6 + 2.5))
+    fig.patch.set_facecolor('#050505')
+    ax.axis('off')
+
+    plt.text(0.5, 0.95, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color='#00f2ff', fontsize=16, fontweight='bold', transform=fig.transFigure)
+    plt.text(0.5, 0.88, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color='#00ff00', fontsize=11, transform=fig.transFigure)
+
+    col_labels = ['TANGKI', 'TINGGI (cm)', 'VOLUME (L)', 'STATUS']
+    table_vals = []
+    
+    for _, row in df_print.iterrows():
+        vol = float(row['Volume (L)'])
+        tinggi_raw = str(row['Tinggi (cm)'])
+        tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
+        _, status_txt, _ = get_status_info(row['Tangki'], vol)
+        table_vals.append([row['Tangki'], f"{tinggi:.1f}", f"{vol:,.0f}", status_txt])
+
+    table = ax.table(cellText=table_vals, colLabels=col_labels, loc='center', cellLoc='center')
+    table.auto_set_font_size(False)
+    table.set_fontsize(11)
+    table.scale(1, 2.5)
+
+    for (i, j), cell in table.get_celld().items():
+        cell.set_edgecolor('#00f2ff')
+        if i == 0:
+            cell.set_facecolor('#002233')
+            cell.get_text().set_color('#00f2ff')
+            cell.get_text().set_fontweight('bold')
+        else:
+            cell.set_facecolor('#0f0f0f')
+            cell.get_text().set_color('#ffffff')
+            if j == 3:
+                stat = table_vals[i-1][3]
+                if stat == "AMAN": cell.get_text().set_color('#00ff00')
+                elif stat == "CUKUP": cell.get_text().set_color('#ffff00')
+                else: cell.get_text().set_color('#ff0044')
+                cell.get_text().set_fontweight('bold')
+
+    plt.text(0.5, 0.05, f"TOTAL STOCK FUEL: {total_vol:,.0f} LITER", ha='center', va='center', color='#00f2ff', fontsize=12, fontweight='bold', transform=fig.transFigure)
+
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=200, facecolor=fig.get_facecolor())
+    buf.seek(0)
+    plt.close(fig)
+    return buf
+
+# ==========================================
+# LANGKAH 5 : INPUT DATA & LAPORAN HARIAN
 # ==========================================
 with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns(3)
-    with c1: admin_nama = st.text_input("👤 NAMA ADMIN", placeholder="Nama...")
+    with c1: admin_nama = st.text_input("👤 NAMA ADMIN/FUELMAN", placeholder="Nama...")
     with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now(), format="DD/MM/YYYY")
     with c3: shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
 
@@ -321,9 +398,8 @@ with tab_input:
                 st.warning(f"⚠️ NILAI ANGKA SOUNDING TERLALU TINGGI! (Maks: {df_master[df_master['Tank']==tangki_pilihan]['Tinggi'].max()} cm). COBA PERIKSA KEMBALI.")
             
             elif volume_hasil is not None:
-                if volume_hasil > 15000: status_txt, color_hex = "AMAN", "#00ff00"
-                elif volume_hasil > 5000: status_txt, color_hex = "CUKUP", "#ffff00"
-                else: status_txt, color_hex = "KURANG", "#ff0044"
+                # Cek Status Dinamis sesuai Excel
+                _, status_txt, color_hex = get_status_info(tangki_pilihan, volume_hasil)
 
                 result_placeholder.markdown(f"""
                 <div class="result-card">
@@ -434,7 +510,22 @@ with tab_input:
                 """
                 st.markdown(final_table_html, unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("🔄 REFRESH DATA"): st.cache_data.clear(); st.rerun()
+
+                # TOMBOL DOWNLOAD GAMBAR LAPORAN
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button("🔄 REFRESH DATA"): st.cache_data.clear(); st.rerun()
+                with col_btn2:
+                    img_buffer = generate_report_image(df_filtered, tgl_pilih_indo, shift_selected, total_fuel)
+                    st.download_button(
+                        label="📥 DOWNLOAD GAMBAR (.PNG)",
+                        data=img_buffer,
+                        file_name=f"Laporan_Fuel_{tgl_pilih_indo}_{shift_selected}.png",
+                        mime="image/png",
+                        type="primary",
+                        use_container_width=True
+                    )
+
             else:
                 st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih_indo}.")
         else: st.warning("DATABASE KOSONG.")
@@ -442,7 +533,7 @@ with tab_input:
 
 
 # ==========================================
-# LANGKAH 5 : DASHBOARD ANALYTICS
+# LANGKAH 6 : DASHBOARD ANALYTICS
 # ==========================================
 with tab_dashboard:
     st.markdown("<br>", unsafe_allow_html=True)
@@ -493,7 +584,7 @@ with tab_dashboard:
         st.error(f"Gagal memuat dashboard: {e}")
 
 # ==========================================
-# LANGKAH 6 : FITUR HAPUS DATA (ADMIN)
+# LANGKAH 7 : FITUR HAPUS DATA (ADMIN)
 # ==========================================
 st.sidebar.markdown("---")
 
@@ -555,4 +646,4 @@ with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN / PENGAWAS)"):
 
 # Footer Global
 st.markdown("---")
-st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO HAULING</div>', unsafe_allow_html=True)
+st.markdown(f'<div style="text-align: center; font-family: Share Tech Mono; color: #555; font-size: 10px;">Part of DEXTER PROJECT | LOGISTIC MACO </div>', unsafe_allow_html=True)
