@@ -237,28 +237,38 @@ def load_master_data():
 @st.cache_data(ttl=600)
 def load_settings():
     try:
-        df_set = conn.read(worksheet="SETTING_TANGKI", ttl=600)
+        # BACA SHEET "SETTING USAGE"
+        df_set = conn.read(worksheet="SETTING USAGE", ttl=600)
         df_set.columns = df_set.columns.str.strip()
-        return df_set.dropna(subset=['Tank'])
-    except: return pd.DataFrame()
+        # Wajib ganti 'Tank' jadi 'TANGKI'
+        return df_set.dropna(subset=['TANGKI'])
+    except Exception as e:
+        st.sidebar.error(f"Gagal Load Setting: {e}")
+        return pd.DataFrame()
 
 df_master = load_master_data()
 df_settings = load_settings()
 
-# LOGIKA DINAMIS STATUS TANGKI
+# LOGIKA DINAMIS STATUS TANGKI (SUDAH DISESUAIKAN HEADERNYA)
 def get_status_info(tank_id, volume_val):
-    batas_aman, batas_cukup = 15000, 5000 # Default pengaman
-    if not df_settings.empty and 'Tank' in df_settings.columns:
-        match = df_settings[df_settings['Tank'].astype(str).str.strip() == str(tank_id).strip()]
+    # Default jika belum ada setting di excel
+    batas_aman, batas_cukup = 15000, 5000 
+    area_name = "N/A"
+    
+    # Ganti 'Tank' jadi 'TANGKI'
+    if not df_settings.empty and 'TANGKI' in df_settings.columns:
+        match = df_settings[df_settings['TANGKI'].astype(str).str.strip() == str(tank_id).strip()]
         if not match.empty:
-            batas_aman = pd.to_numeric(match['Min_Aman'].values[0], errors='coerce')
-            batas_cukup = pd.to_numeric(match['Min_Cukup'].values[0], errors='coerce')
+            # Ganti dengan header baru: BATAS AMAN dan BATAS CUKUP
+            batas_aman = pd.to_numeric(match['BATAS AMAN'].values[0], errors='coerce')
+            batas_cukup = pd.to_numeric(match['BATAS CUKUP'].values[0], errors='coerce')
             
-    if volume_val >= batas_aman: return "status-aman", "AMAN", "#00ff00"
-    elif volume_val >= batas_cukup: return "status-cukup", "CUKUP", "#ffff00"
-    else: return "status-kurang", "KURANG", "#ff0044"
-
-
+            # Ganti 'Area' jadi 'AREA'
+            area_name = str(match['AREA'].values[0]) if 'AREA' in match.columns else "N/A"
+            
+    if volume_val >= batas_aman: return "status-aman", "AMAN", "#00ff00", area_name
+    elif volume_val >= batas_cukup: return "status-cukup", "CUKUP", "#ffff00", area_name
+    else: return "status-kurang", "KURANG", "#ff0044", area_name
 
 # ==========================================
 # LANGKAH 3 : HEADER UTAMA & SIDEBAR
@@ -284,45 +294,75 @@ df_filtered = pd.DataFrame()
 # LANGKAH 4 : FUNGSI PEMBUAT GAMBAR LAPORAN
 # ==========================================
 def generate_report_image(df_print, tanggal, shift, total_vol):
-    fig, ax = plt.subplots(figsize=(8, len(df_print)*0.6 + 2.5))
+    # Setup Gambar (Tinggi disesuaikan dengan jumlah baris + extra space untuk footer area)
+    fig, ax = plt.subplots(figsize=(10, len(df_print)*0.6 + 4.5))
     fig.patch.set_facecolor('#050505')
     ax.axis('off')
 
-    plt.text(0.5, 0.95, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color='#00f2ff', fontsize=16, fontweight='bold', transform=fig.transFigure)
-    plt.text(0.5, 0.88, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color='#00ff00', fontsize=11, transform=fig.transFigure)
+    plt.text(0.5, 0.96, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color='#00f2ff', fontsize=18, fontweight='bold', transform=fig.transFigure)
+    plt.text(0.5, 0.92, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color='#00ff00', fontsize=12, transform=fig.transFigure)
 
-    col_labels = ['TANGKI', 'TINGGI (cm)', 'VOLUME (L)', 'STATUS']
+    # Header kolom baru: Ada tambahan 'AREA'
+    col_labels = ['TANGKI', 'AREA', 'TINGGI (cm)', 'VOLUME (L)', 'STATUS']
     table_vals = []
+    
+    # Penampung total per area
+    area_totals = {"MINING": 0, "HAULING": 0, "PORT": 0}
     
     for _, row in df_print.iterrows():
         vol = float(row['Volume (L)'])
         tinggi_raw = str(row['Tinggi (cm)'])
         tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
-        _, status_txt, _ = get_status_info(row['Tangki'], vol)
-        table_vals.append([row['Tangki'], f"{tinggi:.1f}", f"{vol:,.0f}", status_txt])
+        
+        # Panggil fungsi status yang baru (sekarang return 4 nilai)
+        _, status_txt, _, area_val = get_status_info(row['Tangki'], vol)
+        
+        table_vals.append([row['Tangki'], area_val, f"{tinggi:.1f}", f"{vol:,.0f}", status_txt])
+        
+        # Hitung akumulasi per area (Case Insensitive)
+        key_area = area_val.upper().strip()
+        if key_area in area_totals:
+            area_totals[key_area] += vol
+        else:
+            # Jika ada area baru selain 3 itu, tetap hitung tapi tidak masuk kategori khusus
+            pass
 
+    # Buat Tabel
     table = ax.table(cellText=table_vals, colLabels=col_labels, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
     table.set_fontsize(11)
-    table.scale(1, 2.5)
+    table.scale(1, 2.8)
 
+    # Styling Tabel (Cyberpunk Theme)
     for (i, j), cell in table.get_celld().items():
         cell.set_edgecolor('#00f2ff')
-        if i == 0:
+        if i == 0: # Header
             cell.set_facecolor('#002233')
             cell.get_text().set_color('#00f2ff')
             cell.get_text().set_fontweight('bold')
-        else:
+        else: # Body
             cell.set_facecolor('#0f0f0f')
             cell.get_text().set_color('#ffffff')
-            if j == 3:
-                stat = table_vals[i-1][3]
+            if j == 4: # Kolom Status
+                stat = table_vals[i-1][4]
                 if stat == "AMAN": cell.get_text().set_color('#00ff00')
                 elif stat == "CUKUP": cell.get_text().set_color('#ffff00')
                 else: cell.get_text().set_color('#ff0044')
                 cell.get_text().set_fontweight('bold')
 
-    plt.text(0.5, 0.05, f"TOTAL STOCK FUEL: {total_vol:,.0f} LITER", ha='center', va='center', color='#00f2ff', fontsize=12, fontweight='bold', transform=fig.transFigure)
+    # Bagian Footer: Total Per Area & Total Global
+    y_pos = 0.18 # Koordinat mulai tulisan footer
+    
+    # Summary per Area
+    plt.text(0.2, y_pos, f"Total Mining : {area_totals['MINING']:,.0f} L", color='#e0e0e0', fontsize=12, fontweight='bold', transform=fig.transFigure)
+    plt.text(0.2, y_pos - 0.04, f"Total Hauling: {area_totals['HAULING']:,.0f} L", color='#e0e0e0', fontsize=12, fontweight='bold', transform=fig.transFigure)
+    plt.text(0.2, y_pos - 0.08, f"Total Port   : {area_totals['PORT']:,.0f} L", color='#e0e0e0', fontsize=12, fontweight='bold', transform=fig.transFigure)
+    
+    # Garis Pembatas Putus-putus
+    plt.text(0.5, y_pos - 0.12, "--------------------------------------------------", ha='center', color='#444', transform=fig.transFigure)
+    
+    # Total Global
+    plt.text(0.5, y_pos - 0.16, f"TOTAL STOCK FUEL ALL AREA: {total_vol:,.0f} LITER", ha='center', va='center', color='#00f2ff', fontsize=14, fontweight='bold', transform=fig.transFigure)
 
     buf = io.BytesIO()
     plt.savefig(buf, format='png', bbox_inches='tight', dpi=200, facecolor=fig.get_facecolor())
@@ -339,7 +379,7 @@ with tab_input:
     c1, c2, c3 = st.columns(3)
     with c1: admin_nama = st.text_input("👤 NAMA ADMIN/FUELMAN", placeholder="Nama...")
     with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now(), format="DD/MM/YYYY")
-    with c3: shift = st.selectbox("⏱️ SHIFT", ["SHIFT 1 (DAY)", "SHIFT 2 (NIGHT)"])
+    with c3: shift = st.selectbox("⏱️ SHIFT", ["AKHIR SHIFT 1 (DAY)", "AKHIR SHIFT 2 (NIGHT)"])
 
     st.markdown("---")
     col_kiri, col_kanan = st.columns([1.5, 1])
@@ -518,9 +558,9 @@ with tab_input:
                 with col_btn2:
                     img_buffer = generate_report_image(df_filtered, tgl_pilih_indo, shift_selected, total_fuel)
                     st.download_button(
-                        label="📥 DOWNLOAD GAMBAR (.PNG)",
+                        label="📥 DOWNLOAD REPORT (.PNG)",
                         data=img_buffer,
-                        file_name=f"Laporan_Fuel_{tgl_pilih_indo}_{shift_selected}.png",
+                        file_name=f"Fuel Stock Report_{tgl_pilih_indo}_Akhir_{shift_selected}.png",
                         mime="image/png",
                         type="primary",
                         use_container_width=True
