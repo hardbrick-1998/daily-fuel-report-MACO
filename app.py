@@ -444,7 +444,7 @@ with tab_input:
             "FT_81": "FT_81.jpeg", "FT_82": "FT_82.jpeg", "FT_83": "FT_83.jpeg",
             "FT_84": "FT_84.jpeg", "FT_85": "FT_85.jpeg", "FT_87": "FT_87.jpeg",
             "FT_88": "FT_88.jpeg", "PITSTOP_MIN_NORTH": "PITSTOP_NORTH.jpeg", 
-            "PITSTOP_KM39": "PITSTOP_KM39.jpeg", "PITSTOP_MIN_CENTRAL": "PITSTOP_CENTRAL.jpeg",
+            "PITSTOP_KM39": "PITSTOP_KM39.jpeg", "PITSTOP_MIN_CENTRAL": "PITSTOP_ROAD_1.jpeg",
         }
         
         if tangki_pilihan in image_map and os.path.exists(image_map[tangki_pilihan]):
