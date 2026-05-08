@@ -328,21 +328,41 @@ st.markdown('<p class="caption-text" style="color: #00f2ff !important; margin-to
 tab_input, tab_dashboard = st.tabs(["📝 INPUT & LAPORAN", "📈 DASHBOARD"])
 df_filtered = pd.DataFrame()
 
-
 # ==========================================
 # LANGKAH 4 : FUNGSI PEMBUAT GAMBAR LAPORAN
 # ==========================================
-
 def generate_report_image(df_print, tanggal, shift, total_vol):
+    from PIL import Image
+    import os
+    import matplotlib.pyplot as plt
+    import io
+    import streamlit as st
+
+    # 1. BUAT TABEL DENGAN MATPLOTLIB (TANPA LOGO DULU)
     fig, ax = plt.subplots(figsize=(10, (len(df_print) + 4) * 0.7 + 1))
-    fig.patch.set_facecolor('#050505')
+    
+    # 🎨 PENGATURAN WARNA ALAMTRI
+    CLR_BG = '#001f3f'
+    CLR_TEXT_MAIN = '#ffffff'
+    CLR_TEXT_HEADER = '#ffffff'
+    CLR_TEXT_SUBTOTAL = '#ffffff'
+    CLR_TBL_HEADER_BG = '#002d5a'
+    CLR_TBL_BODY_BG = '#001a33'
+    CLR_SUBTOTAL_BG = '#003b73'
+    CLR_READY_ALAMTRI = '#00ff00'
+    CLR_BREAKDOWN_ALAMTRI = '#ff003c'
+
+    fig.patch.set_facecolor(CLR_BG)
     ax.axis('off')
 
-    plt.text(0.5, 0.96, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color='#00f2ff', fontsize=18, fontweight='bold', transform=fig.transFigure)
-    plt.text(0.5, 0.92, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color='#00ff00', fontsize=12, transform=fig.transFigure)
+    # --- TULISAN JUDUL ---
+    # Angka Y diturunkan dari 1.10 ke 1.05 (Judul) dan 1.05 ke 1.01 (Tanggal)
+    judul = ax.text(0.5, 1.00, "LAPORAN STOK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
+    subjudul = ax.text(0.5, 0.95, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=12, transform=ax.transAxes)
+    elemen_ekstra = [judul, subjudul]
 
-    # PNG REPORT: Pakai STATUS TANGKI
-    col_labels = ['TANGKI', 'AREA', 'TINGGI (cm)', 'VOLUME (L)', 'STATUS UNIT']
+    # --- LOGIKA PEMBUATAN TABEL ---
+    col_labels = ['TANGKI', 'AREA', 'TINGGI (cm)', 'VOLUME (L)', 'STATUS TANGKI']
     table_vals = []
     row_colors = []
     
@@ -357,10 +377,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
             tinggi_raw = str(row['Tinggi (cm)'])
             tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
             
-            # Ambil Area dari setting
             _, _, _, area_val = get_status_info(row['Tangki'], vol)
-            
-            # Ambil Status Unit (Ready/Breakdown) untuk GAMBAR
             status_unit = str(row['Status Unit']) if 'Status Unit' in row else "N/A"
             
             if area_val.upper().strip() == area_target:
@@ -371,25 +388,25 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
         
         if has_data:
             table_vals.append(["", "", f"TOTAL STOCK {area_target} : ", f"{area_sum:,.0f} L", ""])
-            row_colors.append("#003344")
+            row_colors.append(CLR_SUBTOTAL_BG)
 
     table = ax.table(cellText=table_vals, colLabels=col_labels, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
     table.set_fontsize(11)
     table.scale(1, 2.8)
 
+    # --- PEWARNAAN TABEL ---
     for (i, j), cell in table.get_celld().items():
-        cell.set_edgecolor('#00f2ff') 
-        
+        cell.set_edgecolor(CLR_TEXT_MAIN) 
         if i == 0: 
-            cell.set_facecolor('#002233')
-            cell.get_text().set_color('#00f2ff')
+            cell.set_facecolor(CLR_TBL_HEADER_BG)
+            cell.get_text().set_color(CLR_TEXT_HEADER)
             cell.get_text().set_fontweight('bold')
         else:
-            bg_color = row_colors[i-1]
-            if bg_color: 
-                cell.set_facecolor(bg_color)
-                cell.get_text().set_color('#00f2ff')
+            bg_color_check = row_colors[i-1]
+            if bg_color_check: 
+                cell.set_facecolor(CLR_SUBTOTAL_BG)
+                cell.get_text().set_color(CLR_TEXT_SUBTOTAL)
                 cell.get_text().set_fontweight('bold')
                 if j == 0: cell.visible_edges = 'LTB'
                 elif j == 1: cell.visible_edges = 'TB'
@@ -398,26 +415,67 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
                     cell.get_text().set_ha('right')
                 elif j == 3:
                     cell.visible_edges = 'LRTB'
-                    cell.get_text().set_color('#ffffff')
+                    cell.get_text().set_color(CLR_TEXT_MAIN)
                 else: cell.visible_edges = 'RTB'
             else: 
-                cell.set_facecolor('#0f0f0f')
-                cell.get_text().set_color('#ffffff')
-                if j == 4: # Kolom STATUS TANGKI (PNG)
+                cell.set_facecolor(CLR_TBL_BODY_BG)
+                cell.get_text().set_color(CLR_TEXT_MAIN)
+                if j == 4: 
                     val_stat = str(table_vals[i-1][4]).upper()
                     if val_stat == "READY": 
-                        cell.get_text().set_color('#00ff00') # Hijau Neon
+                        cell.get_text().set_color(CLR_READY_ALAMTRI)
                     elif val_stat == "BREAKDOWN": 
-                        cell.get_text().set_color('#ff003c') # Merah Neon
+                        cell.get_text().set_color(CLR_BREAKDOWN_ALAMTRI)
                     cell.get_text().set_fontweight('bold')
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=200, facecolor=fig.get_facecolor())
-    buf.seek(0)
+    # 2. SIMPAN HASIL MATPLOTLIB SEMENTARA KE BUFFER
+    temp_buf = io.BytesIO()
+    plt.savefig(temp_buf, format='png', bbox_inches='tight', bbox_extra_artists=elemen_ekstra, pad_inches=0.4, dpi=200, facecolor=fig.get_facecolor())
+    temp_buf.seek(0)
     plt.close(fig)
-    return buf
 
-# ==========================================
+    # 3. TEMPEL LOGO MENGGUNAKAN PIL (MENGHILANGKAN ERROR KOTAK UNGU)
+    final_buf = io.BytesIO()
+    try:
+        # Buka gambar tabel hasil matplotlib
+        main_img = Image.open(temp_buf).convert("RGBA")
+        
+        # Cari dan buka file logo
+        base_dir = os.path.dirname(__file__)
+        logo_path = os.path.join(base_dir, "logo_alamtri.png")
+        
+        if os.path.exists(logo_path):
+            logo_img = Image.open(logo_path).convert("RGBA")
+            
+            # Resize logo agar pas (lebar 300 pixels, tinggi proporsional)
+            target_width = 300
+            wpercent = (target_width / float(logo_img.size[0]))
+            hsize = int((float(logo_img.size[1]) * float(wpercent)))
+            
+            # Gunakan text LANCZOS yang terbaru untuk hasil gambar anti-blur
+            logo_img = logo_img.resize((target_width, hsize), Image.Resampling.LANCZOS)
+            
+            # Hitung posisi nempel (Pojok kiri atas: x=40, y=30)
+            pos_x = 50
+            pos_y = 75
+            
+            # Tempel logo ke main_img (parameter ke-3 sangat penting agar PNG transparan tidak jadi blok kotak)
+            main_img.paste(logo_img, (pos_x, pos_y), logo_img)
+        else:
+            st.sidebar.warning(f"⚠️ Logo tidak ditemukan di: {logo_path}")
+
+        # Simpan hasil akhir ke buffer untuk didownload Streamlit
+        main_img.save(final_buf, format="PNG")
+        
+    except Exception as e:
+        st.sidebar.error(f"Gagal menempel logo dengan PIL: {e}")
+        # Jika gagal nempel, kembalikan gambar tabel asli tanpa logo agar aplikasi tidak hang
+        return temp_buf 
+        
+    final_buf.seek(0)
+    return final_buf
+
+# =========================================
 # LANGKAH 5 : INPUT DATA & LAPORAN HARIAN
 # ==========================================
 with tab_input:
@@ -687,7 +745,7 @@ with tab_input:
             else:
                 st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih_indo}.")
         else: st.warning("DATABASE KOSONG.")
-    except Exception as e: st.info("Menghubungkan database...")
+    except Exception as e: st.error(f"⚠️ Error memuat tabel: {e}")
 
 
 # ==========================================
