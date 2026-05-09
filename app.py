@@ -331,10 +331,6 @@ df_filtered = pd.DataFrame()
 # ==========================================
 # LANGKAH 4 : FUNGSI PEMBUAT GAMBAR LAPORAN
 # ==========================================
-
-# ==========================================
-# LANGKAH 4 : FUNGSI PEMBUAT GAMBAR LAPORAN
-# ==========================================
 def generate_report_image(df_print, tanggal, shift, total_vol):
     from PIL import Image
     import os
@@ -354,6 +350,8 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
         LIMIT_STOK_AREA = {}
 
     # 1. BUAT TABEL DENGAN MATPLOTLIB
+    # ---> REVISI: Tambah +3 di rumus tinggi (figsize) agar teks breakdown di bawah tidak bertabrakan
+    # Kurangi ruang cadangan agar tabel tidak terlalu melar ke bawah
     fig, ax = plt.subplots(figsize=(10, (len(df_print) + 4) * 0.7 + 1))
     
     # 🎨 PENGATURAN WARNA ALAMTRI
@@ -371,74 +369,77 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     ax.axis('off')
 
     # --- TULISAN JUDUL ---
-    judul = ax.text(0.5, 1.00, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
+    judul = ax.text(0.5, 1.00, "LAPORAN STOK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
     subjudul = ax.text(0.5, 0.95, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=12, transform=ax.transAxes)
     elemen_ekstra = [judul, subjudul]
 
-    # --- LOGIKA PEMBUATAN TABEL (DENGAN 6 KOLOM BARU) ---
+    # --- LOGIKA PEMISAHAN DATA (READY VS BREAKDOWN) ---
     col_labels = ['TANGKI', 'AREA', 'TINGGI (cm)', 'VOLUME (L)', 'FUEL USAGE', 'STATUS UNIT']
     table_vals = []
     row_colors = []
-    row_types = [] # List khusus penyimpan letak baris untuk merakit merger vertikal
+    row_types = [] 
     
     list_area = ["HAULING", "PORT", "MINING"]
+    
+    # Dictionary khusus untuk menampung data Breakdown terpisah per area
+    dict_breakdown = {"HAULING": [], "PORT": [], "MINING": []}
     
     for area_target in list_area:
         area_sum = 0
         area_rows_temp = []
         
-        # 1. Kumpulkan data spesifik per area
+        # 1. Kumpulkan & Pisahkan Data per area
         for _, row in df_print.iterrows():
             vol = float(row['Volume (L)'])
             tinggi_raw = str(row['Tinggi (cm)'])
             tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
             
             _, _, _, area_val = get_status_info(row['Tangki'], vol)
-            status_unit = str(row['Status Unit']) if 'Status Unit' in row else "N/A"
+            status_unit = str(row['Status Unit']).upper().strip() if 'Status Unit' in row else "N/A"
             
             if area_val.upper().strip() == area_target:
-                area_rows_temp.append((row['Tangki'], area_val, tinggi, vol, status_unit))
-                area_sum += vol
+                # ---> CEK STATUS UNIT <---
+                if status_unit == "BREAKDOWN":
+                    # Masukkan ke daftar list isu, dan TIDAK dimasukkan ke tabel atau total stok area
+                    dict_breakdown[area_target].append(f"- {row['Tangki']} BREAKDOWN (Stock Fuel : {vol:,.0f} L)")
+                else:
+                    # Jika READY, masukkan data ke tabel dan jumlahkan volumenya
+                    area_rows_temp.append((row['Tangki'], area_val, tinggi, vol, status_unit))
+                    area_sum += vol
         
+        # 2. Rangkai Data ke dalam Tabel
         num_rows = len(area_rows_temp)
         if num_rows > 0:
             limit_batas = LIMIT_STOK_AREA.get(area_target, 0)
-            
-            # Cari baris paling tengah untuk naruh teks FUEL USAGE agar terlihat di-merger rapi
             mid_idx = num_rows // 2 if num_rows % 2 != 0 else (num_rows // 2) - 1
             if mid_idx < 0: mid_idx = 0
             
             for idx, item in enumerate(area_rows_temp):
                 tangki, area_val, tinggi, vol, status_unit = item
-                
-                # Munculkan teks USAGE (L) hanya di baris tengah
                 fuel_usage_txt = f"{limit_batas:,.0f} L" if idx == mid_idx else ""
                 
-                # Masukkan ke baris tabel (Kolom indeks ke-4 adalah FUEL USAGE)
                 table_vals.append([tangki, area_val, f"{tinggi:.1f}", f"{vol:,.0f}", fuel_usage_txt, status_unit])
                 row_colors.append(None)
                 
-                # Tandai status posisi baris untuk trik hapus border (Merger Vertikal)
                 if num_rows == 1: row_types.append('data_single')
                 elif idx == 0: row_types.append('data_first')
                 elif idx == num_rows - 1: row_types.append('data_last')
                 else: row_types.append('data_mid')
         
-            # 2. Baris Subtotal (Ditambah perhitungan Stock Aman / Kurang)
+            # Baris Subtotal
             status_total = "STOCK AMAN" if area_sum >= limit_batas else "STOCK KURANG"
             table_vals.append(["", "", f"TOTAL STOCK {area_target} : ", f"{area_sum:,.0f} L", "", status_total])
             row_colors.append(CLR_SUBTOTAL_BG)
             row_types.append('subtotal')
 
-    # Mengatur proporsi lebar masing-masing dari 6 kolom (Totalnya harus 1.0)
+    # ---> RENDER TABEL (Menerapkan Lebar Kolom)
     lebar_kolom = [0.18, 0.12, 0.14, 0.15, 0.23, 0.18] 
-    
     table = ax.table(cellText=table_vals, colLabels=col_labels, colWidths=lebar_kolom, loc='center', cellLoc='center')
     table.auto_set_font_size(False)
     table.set_fontsize(11)
     table.scale(1, 2.8)
 
-    # --- PEWARNAAN TABEL & EKSEKUSI MERGER VERTIKAL ---
+    # --- PEWARNAAN TABEL & MERGER ---
     for (i, j), cell in table.get_celld().items():
         cell.set_edgecolor(CLR_TEXT_MAIN) 
         if i == 0: 
@@ -447,76 +448,83 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
             cell.get_text().set_fontweight('bold')
         else:
             r_type = row_types[i-1]
-            bg_color_check = row_colors[i-1]
             
-            if r_type == 'subtotal': # PEWARNAAN BARIS SUBTOTAL
+            if r_type == 'subtotal': # BARIS SUBTOTAL
                 cell.set_facecolor(CLR_SUBTOTAL_BG)
                 cell.get_text().set_color(CLR_TEXT_SUBTOTAL)
                 cell.get_text().set_fontweight('bold')
                 
-                # MERGER 1: TANGKI + AREA + TINGGI (Kolom 0, 1, 2)
                 if j == 0: cell.visible_edges = 'LTB'
                 elif j == 1: cell.visible_edges = 'TB'
                 elif j == 2:
                     cell.visible_edges = 'RTB'
                     cell.get_text().set_ha('right')
-                    
-                # KOLOM NORMAL: VOLUME (Kolom 3)
                 elif j == 3: cell.visible_edges = 'LRTB'
                 
-                # ---> REVISI MERGER HORIZONTAL YANG AMAN (KOLOM 4 & 5) <---
                 elif j == 4: 
-                    cell.visible_edges = 'LTB' # Hapus batas kanan
-                    
-                    # Ambil teks status dari data
+                    cell.visible_edges = 'LTB'
                     val_stat_total = str(table_vals[i-1][5])
                     cell.get_text().set_text(val_stat_total)
                     
-                    # TRIK KOORDINAT: Taruh teks persis di garis batas antara kolom 4 dan 5 (koordinat x=1.0)
                     cell.get_text().set_position((1.0, 0.5))
-                    cell.get_text().set_ha('center')   # Ratakan tengah dari garis batas
-                    cell.get_text().set_clip_on(False) # Bebaskan agar teks bisa melintas ke kolom 5
+                    cell.get_text().set_ha('center')   
+                    cell.get_text().set_clip_on(False) 
                     
-                    # Pewarnaan teks
-                    if val_stat_total == "STOCK AMAN":
-                        cell.get_text().set_color(CLR_READY_ALAMTRI)
-                    elif val_stat_total == "STOCK KURANG":
-                        cell.get_text().set_color(CLR_BREAKDOWN_ALAMTRI)
+                    if val_stat_total == "STOCK AMAN": cell.get_text().set_color(CLR_READY_ALAMTRI)
+                    elif val_stat_total == "STOCK KURANG": cell.get_text().set_color(CLR_BREAKDOWN_ALAMTRI)
                         
                 elif j == 5:
-                    cell.visible_edges = 'RTB' # Hapus batas kiri
-                    cell.get_text().set_text("") # Kosongkan teks asli di kolom 5 agar tidak dobel
-                    
-                    # Pindahkan teks agar melayang di tengah 2 kolom
-                    cell.get_text().set_ha('center')
-                    # Geser teks sedikit ke kiri agar benar-benar berada di titik tengah merger
-                    cell.get_text().set_position((-2.0, 0.5)) 
-                    
-                    val_stat_total = str(table_vals[i-1][5])
-                    if val_stat_total == "STOCK AMAN":
-                        cell.get_text().set_color(CLR_READY_ALAMTRI)
-                    elif val_stat_total == "STOCK KURANG":
-                        cell.get_text().set_color(CLR_BREAKDOWN_ALAMTRI)
+                    cell.visible_edges = 'RTB'
+                    cell.get_text().set_text("")
             
-            else: # PEWARNAAN BARIS DATA BIASA
+            else: # BARIS DATA NORMAL
                 cell.set_facecolor(CLR_TBL_BODY_BG)
                 cell.get_text().set_color(CLR_TEXT_MAIN)
                 
-                # ---> MAGIC TRICK: MERGER VERTIKAL KOLOM FUEL USAGE <---
                 if j == 4:
-                    if r_type == 'data_single': cell.visible_edges = 'LRTB' # Jika cuma 1 tangki, kotak utuh
-                    elif r_type == 'data_first': cell.visible_edges = 'LTR' # Kotak atas: Hapus bawah
-                    elif r_type == 'data_mid': cell.visible_edges = 'LR'    # Kotak tengah: Hapus atas & bawah
-                    elif r_type == 'data_last': cell.visible_edges = 'LBR'  # Kotak bawah: Hapus atas
+                    if r_type == 'data_single': cell.visible_edges = 'LRTB' 
+                    elif r_type == 'data_first': cell.visible_edges = 'LTR'
+                    elif r_type == 'data_mid': cell.visible_edges = 'LR'   
+                    elif r_type == 'data_last': cell.visible_edges = 'LBR' 
                     
-                # WARNA STATUS UNIT (READY/BREAKDOWN)
                 elif j == 5: 
                     val_stat = str(table_vals[i-1][5]).upper()
-                    if val_stat == "READY": 
-                        cell.get_text().set_color(CLR_READY_ALAMTRI)
-                    elif val_stat == "BREAKDOWN": 
-                        cell.get_text().set_color(CLR_BREAKDOWN_ALAMTRI)
+                    if val_stat == "READY": cell.get_text().set_color(CLR_READY_ALAMTRI)
                     cell.get_text().set_fontweight('bold')
+
+    # -----------------------------------------------------------
+    # ---> TAMBAHAN BARU: RANGKAIAN TEKS ISSUE DI POJOK KIRI BAWAH
+    # -----------------------------------------------------------
+    
+    # Hitung jarak spasi antar baris secara dinamis agar selalu rapi 
+    # (Rumus ini mengikuti figsize tabel agar jarak spasi tidak melar)
+    tinggi_kanvas = (len(df_print) + 4) * 0.7 + 1.0 
+    spasi_baris = 0.22 / tinggi_kanvas 
+    
+    y_pos = 0.10 # Menggunakan posisi persis seperti settingan Mas Faiz tadi
+    
+    for area in list_area:
+        # 1. Tulis Header Area (DENGAN FONT BOLD & ITALIC)
+        txt_header = ax.text(0.05, y_pos, f"ISSUE AREA {area} :", ha='left', va='top', 
+                             color=CLR_TEXT_MAIN, fontsize=11, fontweight='bold', fontstyle='italic', transform=ax.transAxes)
+        elemen_ekstra.append(txt_header)
+        y_pos -= spasi_baris # Pindah ke baris bawahnya
+        
+        # 2. Tulis Isi Isu / Kerusakan (DENGAN FONT NORMAL)
+        if len(dict_breakdown[area]) > 0:
+            for issue in dict_breakdown[area]:
+                txt_issue = ax.text(0.05, y_pos, f"  {issue}", ha='left', va='top', 
+                                    color=CLR_TEXT_MAIN, fontsize=11, transform=ax.transAxes)
+                elemen_ekstra.append(txt_issue)
+                y_pos -= spasi_baris # Pindah ke baris bawahnya
+        else:
+            txt_issue = ax.text(0.05, y_pos, "  - Tidak Ada", ha='left', va='top', 
+                                color=CLR_TEXT_MAIN, fontsize=11, transform=ax.transAxes)
+            elemen_ekstra.append(txt_issue)
+            y_pos -= spasi_baris # Pindah ke baris bawahnya
+            
+        # 3. Tambahan spasi ekstra sebagai pemisah antar blok Area
+        y_pos -= (spasi_baris * 1.2)
 
     # 2. SIMPAN HASIL MATPLOTLIB
     temp_buf = io.BytesIO()
@@ -524,7 +532,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     temp_buf.seek(0)
     plt.close(fig)
 
-    # 3. TEMPEL LOGO
+    # 3. TEMPEL LOGO PIL
     final_buf = io.BytesIO()
     try:
         main_img = Image.open(temp_buf).convert("RGBA")
@@ -537,7 +545,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
             wpercent = (target_width / float(logo_img.size[0]))
             hsize = int((float(logo_img.size[1]) * float(wpercent)))
             logo_img = logo_img.resize((target_width, hsize), Image.Resampling.LANCZOS)
-            main_img.paste(logo_img, (95, 75), logo_img)
+            main_img.paste(logo_img, (90, 75), logo_img)
         else:
             st.sidebar.warning(f"⚠️ Logo tidak ditemukan di: {logo_path}")
 
@@ -557,7 +565,7 @@ with tab_input:
     st.markdown("<br>", unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns(3)
-    with c1: admin_nama = st.text_input("👤 NAMA ADMIN/FUELMAN", placeholder="Nama...")
+    with c1: admin_nama = st.text_input("👤 NAMA ADMIN/FUELMAN", placeholder="Silahkan isi Nama Anda...")
     with c2: tgl_laporan = st.date_input("📅 TANGGAL", datetime.now(), format="DD/MM/YYYY")
     with c3: shift = st.selectbox("⏱️ SHIFT", ["AKHIR SHIFT 1 (DAY)", "AKHIR SHIFT 2 (NIGHT)"])
 
