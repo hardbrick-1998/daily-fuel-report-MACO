@@ -379,10 +379,19 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     row_colors = []
     row_types = [] 
     
-    list_area = ["HAULING", "PORT", "MINING"]
+    list_area = ["MINING", "HAULING", "PORT"]
+    
+    # ---> TAMBAHAN BARU: "BUKU ABSEN" URUTAN TANGKI <---
+    urutan_tangki = [
+        "FT_57", "FT_73", "FT_84", "FT_85", "FT_87", "FT_88", "PITSTOP_NORTH", "PITSTOP_ROAD_1", # MINING
+        "FT_81", "FT_82", "FT_83", "PITSTOP_KM39", # HAULING
+        "FT_74" # PORT
+    ]
+    # Konversi urutan ke dalam dictionary untuk sistem ranking
+    map_urutan = {nama.upper().strip(): ranking for ranking, nama in enumerate(urutan_tangki)}
     
     # Dictionary khusus untuk menampung data Breakdown terpisah per area
-    dict_breakdown = {"HAULING": [], "PORT": [], "MINING": []}
+    dict_breakdown = {"MINING": [], "HAULING": [], "PORT": []}
     
     for area_target in list_area:
         area_sum = 0
@@ -398,14 +407,16 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
             status_unit = str(row['Status Unit']).upper().strip() if 'Status Unit' in row else "N/A"
             
             if area_val.upper().strip() == area_target:
-                # ---> CEK STATUS UNIT <---
                 if status_unit == "BREAKDOWN":
-                    # Masukkan ke daftar list isu, dan TIDAK dimasukkan ke tabel atau total stok area
-                    dict_breakdown[area_target].append(f"- {row['Tangki']} BREAKDOWN (Stock Fuel : {vol:,.0f} L)")
+                    dict_breakdown[area_target].append(f"- {row['Tangki']} BREAKDOWN (STOCK FUEL : {vol:,.0f} L)")
                 else:
-                    # Jika READY, masukkan data ke tabel dan jumlahkan volumenya
                     area_rows_temp.append((row['Tangki'], area_val, tinggi, vol, status_unit))
                     area_sum += vol
+        
+        # ---> TAMBAHAN BARU: MENGURUTKAN POSISI TANGKI SECARA OTOMATIS <---
+        # Mensortir data tangki berdasarkan ranking di 'map_urutan'. 
+        # Jika ada tangki baru yang belum terdaftar di list, otomatis ditaruh paling bawah (nilai 999).
+        area_rows_temp.sort(key=lambda x: map_urutan.get(str(x[0]).upper().strip(), 999))
         
         # 2. Rangkai Data ke dalam Tabel
         num_rows = len(area_rows_temp)
