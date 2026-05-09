@@ -501,7 +501,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     tinggi_kanvas = (len(df_print) + 4) * 0.7 + 1.5 
     spasi_baris = 0.22 / tinggi_kanvas 
     
-    y_pos = 0.10 # Menggunakan posisi persis seperti settingan Mas Faiz tadi
+    y_pos = 0.05 # Menggunakan posisi persis seperti settingan Mas Faiz tadi
     
     for area in list_area:
         # 1. Tulis Header Area (DENGAN FONT BOLD & ITALIC)
