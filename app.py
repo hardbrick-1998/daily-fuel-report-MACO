@@ -371,7 +371,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     ax.axis('off')
 
     # --- TULISAN JUDUL ---
-    judul = ax.text(0.5, 1.00, "LAPORAN STOK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
+    judul = ax.text(0.5, 1.00, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
     subjudul = ax.text(0.5, 0.95, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=12, transform=ax.transAxes)
     elemen_ekstra = [judul, subjudul]
 
@@ -748,7 +748,7 @@ with tab_input:
     
     st.markdown(f"""
     <div style="text-align: center; font-family: 'Share Tech Mono'; color: #00ff00; margin-top: 10px; font-size: 14px;">
-        DATA: <span style="color:white">{tgl_pilih_indo}</span> | <span style="color:white">{shift_selected}</span>
+        TANGGAL: <span style="color:white">{tgl_pilih_indo}</span> | <span style="color:white">{shift_selected}</span>
     </div><br>""", unsafe_allow_html=True)
 
     try:
