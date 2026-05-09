@@ -498,10 +498,10 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     
     # Hitung jarak spasi antar baris secara dinamis agar selalu rapi 
     # (Rumus ini mengikuti figsize tabel agar jarak spasi tidak melar)
-    tinggi_kanvas = (len(df_print) + 4) * 0.7 + 1.0 
+    tinggi_kanvas = (len(df_print) + 4) * 0.7 + 1.5 
     spasi_baris = 0.22 / tinggi_kanvas 
     
-    y_pos = 0.15 # Menggunakan posisi persis seperti settingan Mas Faiz tadi
+    y_pos = 0.10 # Menggunakan posisi persis seperti settingan Mas Faiz tadi
     
     for area in list_area:
         # 1. Tulis Header Area (DENGAN FONT BOLD & ITALIC)
@@ -524,7 +524,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
             y_pos -= spasi_baris # Pindah ke baris bawahnya
             
         # 3. Tambahan spasi ekstra sebagai pemisah antar blok Area
-        y_pos -= (spasi_baris * 1.2)
+        y_pos -= (spasi_baris * 0.5)
 
     # 2. SIMPAN HASIL MATPLOTLIB
     temp_buf = io.BytesIO()
