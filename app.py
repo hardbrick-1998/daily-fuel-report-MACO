@@ -10,7 +10,8 @@ import base64
 import re
 import io
 import matplotlib.pyplot as plt
-import random # ---> TAMBAHKAN BARIS INI
+import random
+import uuid  
 
 # ==========================================
 # LANGKAH 1 : KONFIGURASI TEMA & PWA
@@ -714,6 +715,10 @@ with tab_input:
                                 val_str = str(val)
                                 return val_str[:-2] if val_str.endswith(".0") else val_str
 
+                            # ---> 1. BUAT ID TRANSAKSI UNIK (Kombinasi Tanggal, Tangki, dan Kode Acak)
+                            kode_acak = str(uuid.uuid4())[:6].upper()
+                            trx_id = f"TRX-{datetime.now().strftime('%y%m%d%H%M')}-{tangki_pilihan}-{kode_acak}"
+
                             # Kolom 'Status Unit' ikut dimasukkan ke database
                             new_record = {
                                 "Nama": str(admin_nama), 
@@ -722,7 +727,8 @@ with tab_input:
                                 "Tangki": str(tangki_pilihan),
                                 "Tinggi (cm)": format_angka_aman(tinggi_cm), 
                                 "Volume (L)": format_angka_aman(volume_hasil),
-                                "Status Unit": status_unit_pilihan
+                                "Status Unit": status_unit_pilihan,
+                                "ID Transaksi": trx_id # <--- TAMBAHAN BARU UNTUK KOLOM H
                             }
                             
                             with st.spinner(f"Mengirim Laporan (Unit: {status_unit_pilihan})..."):
@@ -734,25 +740,50 @@ with tab_input:
                                     # ---> MENGGUNAKAN FUNGSI AUTO-RETRY
                                     df_old = read_historical_safe()
                                     
-                                    df_new_row = pd.DataFrame([new_record])
-                                    df_final = pd.concat([df_old, df_new_row], ignore_index=True)
-                                    
-                                    # Pastikan semunya murni string sebelum ditimpa ke Sheets
-                                    df_final = df_final.astype(str)
-                                    
-                                    # Tulis ke database
-                                    conn.update(worksheet="HISTORICAL", data=df_final)
-                                    
-                                    # Bersihkan antrian offline jika ada
-                                    if len(dex_queue) > 0: 
-                                        try: localS.deleteAll()
-                                        except: pass
+                                    # ---> 2. SISTEM QC ANTI-DOUBLE INPUT <---
+                                    is_duplicate = False
+                                    if not df_old.empty:
+                                        # Cek 1: Cegah Double Submit (Klik 2x) dari ID Transaksi
+                                        if 'ID Transaksi' in df_old.columns and trx_id in df_old['ID Transaksi'].values:
+                                            is_duplicate = True
+                                            
+                                        # Cek 2: Cegah 2 Fuelman lapor tangki yang sama di shift yang sama!
+                                        if not is_duplicate and 'Tangki' in df_old.columns:
+                                            cek_kembar = df_old[
+                                                (df_old['Tanggal'].astype(str).str.strip() == str(tgl_simpan).strip()) &
+                                                (df_old['Shift'].astype(str).str.strip() == str(shift).strip()) &
+                                                (df_old['Tangki'].astype(str).str.strip() == str(tangki_pilihan).strip())
+                                            ]
+                                            if not cek_kembar.empty:
+                                                is_duplicate = True
+                                                st.error(f"⛔ STOP! Tangki {tangki_pilihan}  di {shift}  SUDAH DILAPORKAN DATA-NYA.")
+
+                                    # ---> 3. EKSEKUSI PENYIMPANAN JIKA BUKAN DUPLIKAT
+                                    if not is_duplicate:
+                                        df_new_row = pd.DataFrame([new_record])
+                                        df_final = pd.concat([df_old, df_new_row], ignore_index=True)
                                         
-                                    st.toast(f"SUKSES: DATA TERKIRIM! (Status: {status_unit_pilihan})", icon="🚀")
-                                    time.sleep(1.5)
-                                    st.session_state.konfirmasi_kirim = False # Tutup mode konfirmasi
-                                    st.cache_data.clear() # Paksa refresh memory
-                                    st.rerun()
+                                        # Pastikan semunya murni string sebelum ditimpa ke Sheets
+                                        df_final = df_final.astype(str)
+                                        
+                                        # Tulis ke database
+                                        conn.update(worksheet="HISTORICAL", data=df_final)
+                                        
+                                        # Bersihkan antrian offline jika ada
+                                        if len(dex_queue) > 0: 
+                                            try: localS.deleteAll()
+                                            except: pass
+                                            
+                                        st.toast(f"SUKSES: DATA TERKIRIM! (ID: {trx_id})", icon="🚀")
+                                        time.sleep(1.5)
+                                        st.session_state.konfirmasi_kirim = False # Tutup mode konfirmasi
+                                        st.cache_data.clear() # Paksa refresh memory
+                                        st.rerun()
+                                    else:
+                                        # Jika terdeteksi duplikat, batalkan pengiriman secara diam-diam
+                                        time.sleep(2.0)
+                                        st.session_state.konfirmasi_kirim = False
+                                        st.rerun()
 
                                 except Exception as e:
                                     # MEMUNCULKAN ERROR ASLI KE LAYAR AGAR TIDAK HANG
