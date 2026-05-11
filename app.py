@@ -217,22 +217,36 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 SHEET_ID = "1kRp5bxSGooJAFqprhcI7AGinBfdicjmYRY8OSh-_ngw"
 
-# Auto Sync Logic (Pakai dtype=str)
+# ---> 1. TAMBAHKAN FUNGSI SUPER BARU INI <---
+def read_historical_safe():
+    """Mencoba baca database 3 kali berturut-turut jika sinyal putus."""
+    for attempt in range(3):
+        try:
+            df = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
+            return df.dropna(how='all')
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(1.5) # Diam sejenak nunggu sinyal
+            else:
+                raise e # Lempar error jika 3 kali tetap gagal
+    return pd.DataFrame()
+
+# ---> 2. REVISI AUTO SYNC LOGIC (MENCEGAH TERHAPUS MASSAL) <---
 dex_queue = localS.getItem("dexter_historical_queue") or []
 if len(dex_queue) > 0:
     try:
         df_new = pd.DataFrame(dex_queue).astype(str)
-        try:
-            df_old = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
-            df_old = df_old.dropna(how='all')
-            df_final = pd.concat([df_old, df_new], ignore_index=True).astype(str)
-            conn.update(worksheet="HISTORICAL", data=df_final)
-        except:
-            conn.update(worksheet="HISTORICAL", data=df_new)
+        # BACA DATA LAMA DENGAN SISTEM AUTO-RETRY
+        df_old = read_historical_safe()
+        
+        df_final = pd.concat([df_old, df_new], ignore_index=True).astype(str)
+        conn.update(worksheet="HISTORICAL", data=df_final)
+        
         localS.deleteAll()
         st.toast("♻️ DATA PENDING TERKIRIM!", icon="✅")
     except Exception as e:
-        st.toast(f"⚠️ OFFLINE: {len(dex_queue)} Data di HP", icon="💾")
+        # JIKA GAGAL 3 KALI, BIARKAN SAJA DI HP. JANGAN PERNAH TIMPA DATA LAMA!
+        st.toast(f"⚠️ OFFLINE: Menunggu Sinyal ({len(dex_queue)} Data di HP)", icon="⏳")
 
 # Load Master Data
 @st.cache_data(ttl=600)
@@ -713,8 +727,7 @@ with tab_input:
                             with st.spinner(f"Mengirim Laporan (Unit: {status_unit_pilihan})..."):
                                 try:
                                     # BACA SEBAGAI TEXT MURNI (dtype=str) agar data lama tidak dirusak Pandas
-                                    df_old = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
-                                    df_old = df_old.dropna(how='all') # Bersihkan baris kosong
+                                    df_old = read_historical_safe()
                                     
                                     df_new_row = pd.DataFrame([new_record])
                                     df_final = pd.concat([df_old, df_new_row], ignore_index=True)
@@ -778,8 +791,7 @@ with tab_input:
 
     try:
         # Tambahkan dtype=str
-        df_report = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
-        df_report = df_report.dropna(how='all')
+        df_report = read_historical_safe()
         
         # Inisialisasi df_filtered kosong untuk jaga-jaga
         df_filtered = pd.DataFrame()
@@ -1027,8 +1039,7 @@ with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN / PENGAWAS)"):
                 with st.spinner("Mencari & Menghapus 1 Data..."):
                     try:
                         # WAJIB BACA STRING
-                        df_current = conn.read(worksheet="HISTORICAL", dtype=str, ttl=0)
-                        df_current = df_current.dropna(how='all')
+                        df_current = read_historical_safe()
                         
                         matches = df_current[
                             (df_current['Tanggal'].astype(str).str.strip() == str(row_target['Tanggal']).strip()) &
