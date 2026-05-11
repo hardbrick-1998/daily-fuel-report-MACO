@@ -10,6 +10,7 @@ import base64
 import re
 import io
 import matplotlib.pyplot as plt
+import random # ---> TAMBAHKAN BARIS INI
 
 # ==========================================
 # LANGKAH 1 : KONFIGURASI TEMA & PWA
@@ -726,7 +727,11 @@ with tab_input:
                             
                             with st.spinner(f"Mengirim Laporan (Unit: {status_unit_pilihan})..."):
                                 try:
-                                    # BACA SEBAGAI TEXT MURNI (dtype=str) agar data lama tidak dirusak Pandas
+                                    # ---> JITTER UPDATE: Menahan pengiriman secara acak (0.5 - 2.5 detik)
+                                    # Mencegah 2 Fuelman menulis data di sel Spreadsheet yang sama persis
+                                    time.sleep(random.uniform(0.5, 2.5))
+                                    
+                                    # ---> MENGGUNAKAN FUNGSI AUTO-RETRY
                                     df_old = read_historical_safe()
                                     
                                     df_new_row = pd.DataFrame([new_record])
