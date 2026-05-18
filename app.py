@@ -387,7 +387,7 @@ def generate_report_image(df_print, tanggal, shift, total_vol):
     ax.axis('off')
 
     # --- TULISAN JUDUL ---
-    judul = ax.text(0.5, 1.00, "LAPORAN STOK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
+    judul = ax.text(0.5, 1.00, "LAPORAN STOCK FUEL MACO", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=18, fontweight='bold', transform=ax.transAxes)
     subjudul = ax.text(0.5, 0.95, f"Tanggal: {tanggal} | {shift}", ha='center', va='center', color=CLR_TEXT_MAIN, fontsize=12, transform=ax.transAxes)
     elemen_ekstra = [judul, subjudul]
 
