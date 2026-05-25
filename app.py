@@ -827,176 +827,180 @@ with tab_input:
         TANGGAL: <span style="color:white">{tgl_pilih_indo}</span> | <span style="color:white">{shift_selected}</span>
     </div><br>""", unsafe_allow_html=True)
 
-    @st.fragment(run_every="5m")
-    def render_laporan_stock():
+@st.fragment(run_every="5m")
+def render_laporan_stock(tgl_laporan, shift_selected, tgl_pilih_indo):
 
-        try:
-            # Tambahkan dtype=str
-            df_report = read_historical_safe(ttl_val=300)
+    try:
+        # Tambahkan dtype=str
+        df_report = read_historical_safe(ttl_val=300) # <--- PASTIKAN ADA ANGKA 300 INI
+        
+        # Inisialisasi df_filtered kosong untuk jaga-jaga
+        df_filtered = pd.DataFrame()
+        total_fuel = 0
+        
+        if not df_report.empty:
+            df_report['Tanggal'] = df_report['Tanggal'].astype(str)
+            df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
+            df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
             
-            # Inisialisasi df_filtered kosong untuk jaga-jaga
-            df_filtered = pd.DataFrame()
-            total_fuel = 0
+            df_filtered = df_report[
+                (df_report['Tanggal_dt'].dt.date == tgl_laporan) & 
+                (df_report['Shift'] == shift_selected)
+            ].copy()
             
-            if not df_report.empty:
-                df_report['Tanggal'] = df_report['Tanggal'].astype(str)
-                df_report['Tanggal_dt'] = pd.to_datetime(df_report['Tanggal'], dayfirst=True, errors='coerce')
-                df_report['Shift'] = df_report['Shift'].astype(str).str.strip()
+            if not df_filtered.empty:
+                df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
+                total_fuel = df_filtered['Volume (L)'].sum()
                 
-                df_filtered = df_report[
-                    (df_report['Tanggal_dt'].dt.date == tgl_laporan) & 
-                    (df_report['Shift'] == shift_selected)
-                ].copy()
-                
-                if not df_filtered.empty:
-                    df_filtered['Volume (L)'] = pd.to_numeric(df_filtered['Volume (L)'], errors='coerce').fillna(0)
-                    total_fuel = df_filtered['Volume (L)'].sum()
+                rows_html = ""
+                for idx, row in df_filtered.iterrows():
+                    vol = float(row['Volume (L)'])
+                    tinggi_raw = str(row['Tinggi (cm)'])
+                    tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
                     
-                    rows_html = ""
-                    for idx, row in df_filtered.iterrows():
-                        vol = float(row['Volume (L)'])
-                        tinggi_raw = str(row['Tinggi (cm)'])
-                        tinggi = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
-                        
-                        # WEB APP: Pakai status VOLUME (Aman/Cukup/Kurang)
-                        status_cls, status_txt, _, _ = get_status_info(row['Tangki'], vol)
-                        
-                        rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
+                    # WEB APP: Pakai status VOLUME (Aman/Cukup/Kurang)
+                    status_cls, status_txt, _, _ = get_status_info(row['Tangki'], vol)
+                    
+                    rows_html += f"<tr><td>{row['Tangki']}</td><td>{tinggi:.1f} cm</td><td>{vol:,.0f} L</td><td class='{status_cls}'>{status_txt}</td></tr>"
 
-                    # REVISI: Tambahan overflow-x agar tabel bisa digeser di HP
-                    final_table_html = f"""
-                    <div class="cyber-card">
-                        <div style="overflow-x: auto;">
-                            <table class="cyber-table" style="min-width: 500px;">
-                            <thead><tr><th>TANGKI</th><th>TINGGI</th><th>VOLUME</th><th>STATUS STOCK</th></tr></thead>
-                            <tbody>{rows_html}</tbody>
-                            </table>
-                        </div>
-                        <div class="cyber-footer">
-                            <span class="footer-label">TOTAL STOCK FUEL:</span>
-                            <span class="footer-value">{total_fuel:,.0f} LITER</span>
-                        </div>
+                # REVISI: Tambahan overflow-x agar tabel bisa digeser di HP
+                final_table_html = f"""
+                <div class="cyber-card">
+                    <div style="overflow-x: auto;">
+                        <table class="cyber-table" style="min-width: 500px;">
+                        <thead><tr><th>TANGKI</th><th>TINGGI</th><th>VOLUME</th><th>STATUS STOCK</th></tr></thead>
+                        <tbody>{rows_html}</tbody>
+                        </table>
                     </div>
-                    """
-                    st.markdown(final_table_html, unsafe_allow_html=True)
-                    st.markdown("<br>", unsafe_allow_html=True)
-
-                else:
-                    st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih_indo}.")
-            else: 
-                st.warning("DATABASE KOSONG.")
-
-            # ==========================================
-            # ---> TAMBAHAN BARU: TABEL QC (BELUM LAPOR HASIL SOUNDING) <---
-            # ==========================================
-            if not df_master.empty and 'Tank' in df_master.columns:
-                # 1. Tarik semua daftar tangki di database master
-                all_tanks = set(df_master['Tank'].dropna().unique())
-                
-                # 2. Cek tangki mana saja yang sudah lapor di shift ini
-                reported_tanks = set(df_filtered['Tangki'].dropna().unique()) if not df_filtered.empty else set()
-                
-                # 3. Cari selisihnya (Tangki yang nakal belum lapor)
-                unreported_tanks = sorted(list(all_tanks - reported_tanks))
-                
-                if unreported_tanks:
-                    unreported_rows_html = ""
-                    for t in unreported_tanks:
-                        hist_tank = pd.DataFrame()
-                        if not df_report.empty and 'Tangki' in df_report.columns:
-                            hist_tank = df_report[df_report['Tangki'] == t]
-                        
-                        if not hist_tank.empty:
-                            last_record = hist_tank.iloc[-1]
-                            
-                            tinggi_raw = str(last_record['Tinggi (cm)'])
-                            tinggi_val = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
-                            last_tinggi = f"{tinggi_val:.1f} cm"
-                            
-                            vol_raw = str(last_record['Volume (L)'])
-                            vol_val = float(vol_raw) if vol_raw.replace('.', '', 1).isdigit() else 0.0
-                            last_vol = f"{vol_val:,.0f} L"
-                            
-                            last_date = f"{last_record['Tanggal']} | {last_record['Shift']}"
-                        else:
-                            last_tinggi = "-"
-                            last_vol = "-"
-                            last_date = "BELUM PERNAH SOUNDING"
-                            
-                        # ---> REVISI: Tambahkan text-align: center di setiap <td> (Isi Tabel)
-                        unreported_rows_html += f"<tr><td style='text-align: center;'>{t}</td><td style='text-align: center;'>{last_tinggi}</td><td style='text-align: center;'>{last_vol}</td><td style='text-align: center; color:#ffaa00; font-weight:bold;'>{last_date}</td></tr>"
-                        
-                    unreported_table_html = f"""
-                    <div class="cyber-card" style="border-color: #ffaa00; box-shadow: 0 0 20px rgba(255, 170, 0, 0.2);">
-                        <div style="text-align: center; margin-bottom: 10px;">
-                            <h4 style="font-family: 'Orbitron'; color: #ffaa00; margin: 0; text-shadow: 0 0 10px #ffaa00;">⚠️ BELUM LAPOR HASIL SOUNDING</h4>
-                        </div>
-                        <div style="overflow-x: auto;">
-                            <table class="cyber-table" style="min-width: 600px; margin: 0 auto;">
-                            <thead>
-                                <tr>
-                                    <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">TANGKI</th>
-                                    <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">NILAI SOUNDING TERAKHIR</th>
-                                    <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">VOLUME TERAKHIR</th>
-                                    <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">TANGGAL TERAKHIR SOUNDING</th>
-                                </tr>
-                            </thead>
-                            <tbody>{unreported_rows_html}</tbody>
-                            </table>
-                        </div>
+                    <div class="cyber-footer">
+                        <span class="footer-label">TOTAL STOCK FUEL:</span>
+                        <span class="footer-value">{total_fuel:,.0f} LITER</span>
                     </div>
-                    <br>
-                    """
-                    st.markdown(unreported_table_html, unsafe_allow_html=True)
-            
-            # ==========================================
-            # TOMBOL REFRESH & DOWNLOAD (VERSI RAPI SEUKURAN)
-            # ==========================================
-            col_btn1, col_btn2 = st.columns(2)
-            
-            with col_btn1:
-                if st.button("🔄 REFRESH", use_container_width=True): 
-                    st.cache_data.clear()
-                    st.rerun()
-                    
-            with col_btn2:
-                # ---> REVISI: Cek dulu apakah tabel punya data atau kosong
-                if not df_filtered.empty:
-                    img_buffer = generate_report_image(df_filtered, tgl_pilih_indo, shift_selected, total_fuel)
-                    st.download_button(
-                        label="📥 DOWNLOAD REPORT",
-                        data=img_buffer,
-                        file_name=f"Laporan_Fuel_{tgl_pilih_indo}_{shift_selected}.png",
-                        mime="image/png",
-                        type="primary", 
-                        use_container_width=True
-                    )
-                else:
-                    # ---> REVISI: Suntikan CSS untuk tombol Disabled (Abu-abu Terang Neon & Teks Hitam)
-                    st.markdown("""
-                    <style>
-                    /* Target background & border tombol */
-                    button[disabled] {
-                        border: 2px solid #dcdcdc !important;
-                        background-color: #dcdcdc !important; /* Latar abu-abu terang solid */
-                        box-shadow: 0 0 15px rgba(220, 220, 220, 0.7) !important; /* Efek glow neon abu-abu/putih */
-                        opacity: 0.9 !important;
-                    }
-                    /* Target warna tulisan di dalam tombol */
-                    button[disabled] p, button[disabled] div {
-                        color: #000000 !important; /* Tulisan warna hitam */
-                        font-weight: bold !important;
-                        text-shadow: none !important; /* Hilangkan bayangan agar tulisan hitamnya tajam */
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
-                    
-                    # Tombol dimatikan (disabled) jika data kosong
-                    st.button("📥 NO DATA TO DOWNLOAD", disabled=True, use_container_width=True)
-        except Exception as e: st.error(f"⚠️ Error memuat tabel: {e}")
+                </div>
+                """
+                st.markdown(final_table_html, unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
 
-    # Panggil fungsinya
-    render_laporan_stock()
+            else:
+                st.info(f"⚠️ BELUM ADA DATA UNTUK {shift} DI TANGGAL {tgl_pilih_indo}.")
+        else: 
+            st.warning("DATABASE KOSONG.")
+
+        # ==========================================
+        # ---> TAMBAHAN BARU: TABEL QC (BELUM LAPOR HASIL SOUNDING) <---
+        # ==========================================
+        if not df_master.empty and 'Tank' in df_master.columns:
+            # 1. Tarik semua daftar tangki di database master
+            all_tanks = set(df_master['Tank'].dropna().unique())
+            
+            # 2. Cek tangki mana saja yang sudah lapor di shift ini
+            reported_tanks = set(df_filtered['Tangki'].dropna().unique()) if not df_filtered.empty else set()
+            
+            # 3. Cari selisihnya (Tangki yang nakal belum lapor)
+            unreported_tanks = sorted(list(all_tanks - reported_tanks))
+            
+            if unreported_tanks:
+                unreported_rows_html = ""
+                for t in unreported_tanks:
+                    hist_tank = pd.DataFrame()
+                    if not df_report.empty and 'Tangki' in df_report.columns:
+                        hist_tank = df_report[df_report['Tangki'] == t]
+                    
+                    if not hist_tank.empty:
+                        last_record = hist_tank.iloc[-1]
+                        
+                        tinggi_raw = str(last_record['Tinggi (cm)'])
+                        tinggi_val = float(tinggi_raw) if tinggi_raw.replace('.', '', 1).isdigit() else 0.0
+                        last_tinggi = f"{tinggi_val:.1f} cm"
+                        
+                        vol_raw = str(last_record['Volume (L)'])
+                        vol_val = float(vol_raw) if vol_raw.replace('.', '', 1).isdigit() else 0.0
+                        last_vol = f"{vol_val:,.0f} L"
+                        
+                        last_date = f"{last_record['Tanggal']} | {last_record['Shift']}"
+                    else:
+                        last_tinggi = "-"
+                        last_vol = "-"
+                        last_date = "BELUM PERNAH SOUNDING"
+                        
+                    # ---> REVISI: Tambahkan text-align: center di setiap <td> (Isi Tabel)
+                    unreported_rows_html += f"<tr><td style='text-align: center;'>{t}</td><td style='text-align: center;'>{last_tinggi}</td><td style='text-align: center;'>{last_vol}</td><td style='text-align: center; color:#ffaa00; font-weight:bold;'>{last_date}</td></tr>"
+                    
+                unreported_table_html = f"""
+                <div class="cyber-card" style="border-color: #ffaa00; box-shadow: 0 0 20px rgba(255, 170, 0, 0.2);">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <h4 style="font-family: 'Orbitron'; color: #ffaa00; margin: 0; text-shadow: 0 0 10px #ffaa00;">⚠️ BELUM LAPOR HASIL SOUNDING</h4>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="cyber-table" style="min-width: 600px; margin: 0 auto;">
+                        <thead>
+                            <tr>
+                                <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">TANGKI</th>
+                                <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">NILAI SOUNDING TERAKHIR</th>
+                                <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">VOLUME TERAKHIR</th>
+                                <th style="border-bottom: 2px solid #ffaa00; color: #ffaa00; text-align: center;">TANGGAL TERAKHIR SOUNDING</th>
+                            </tr>
+                        </thead>
+                        <tbody>{unreported_rows_html}</tbody>
+                        </table>
+                    </div>
+                </div>
+                <br>
+                """
+                st.markdown(unreported_table_html, unsafe_allow_html=True)
+        
+        # ==========================================
+        # TOMBOL REFRESH & DOWNLOAD (VERSI RAPI SEUKURAN)
+        # ==========================================
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("🔄 REFRESH", use_container_width=True): 
+                st.cache_data.clear()
+                st.rerun()
+                
+        with col_btn2:
+            # ---> REVISI: Cek dulu apakah tabel punya data atau kosong
+            if not df_filtered.empty:
+                img_buffer = generate_report_image(df_filtered, tgl_pilih_indo, shift_selected, total_fuel)
+                st.download_button(
+                    label="📥 DOWNLOAD REPORT",
+                    data=img_buffer,
+                    file_name=f"Laporan_Fuel_{tgl_pilih_indo}_{shift_selected}.png",
+                    mime="image/png",
+                    type="primary", 
+                    use_container_width=True
+                )
+            else:
+                # ---> REVISI: Suntikan CSS untuk tombol Disabled (Abu-abu Terang Neon & Teks Hitam)
+                st.markdown("""
+                <style>
+                /* Target background & border tombol */
+                button[disabled] {
+                    border: 2px solid #dcdcdc !important;
+                    background-color: #dcdcdc !important; /* Latar abu-abu terang solid */
+                    box-shadow: 0 0 15px rgba(220, 220, 220, 0.7) !important; /* Efek glow neon abu-abu/putih */
+                    opacity: 0.9 !important;
+                }
+                /* Target warna tulisan di dalam tombol */
+                button[disabled] p, button[disabled] div {
+                    color: #000000 !important; /* Tulisan warna hitam */
+                    font-weight: bold !important;
+                    text-shadow: none !important; /* Hilangkan bayangan agar tulisan hitamnya tajam */
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                # Tombol dimatikan (disabled) jika data kosong
+                st.button("📥 NO DATA TO DOWNLOAD", disabled=True, use_container_width=True)
+    # Simpan state tabel aktif agar Fitur Hapus bisa membacanya
+        st.session_state['data_tabel_aktif'] = df_filtered
+    except Exception as e: 
+        st.error(f"⚠️ Error memuat tabel: {e}")
+
+# BUKA KEMBALI TAB INPUT AGAR TABEL MASUK KE DALAMNYA
+with tab_input:
+    render_laporan_stock(tgl_laporan, shift_selected, tgl_pilih_indo)
 
 # ==========================================
 # LANGKAH 6 : DASHBOARD ANALYTICS
@@ -1005,53 +1009,54 @@ with tab_dashboard:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### 📈 ANALISIS DATA HISTORIS")
 
-    @st.fragment(run_every="5m")
-    def render_dashboard_analytics():
-        try:
-            # Tambahkan dtype=str
-            df_dash = read_historical_safe(ttl_val=300)
-            df_dash = df_dash.dropna(how='all')
+@st.fragment(run_every="5m")
+def render_dashboard_analytics():
+    try:
+        # Tambahkan dtype=str
+        df_dash = read_historical_safe(ttl_val=300)
+        df_dash = df_dash.dropna(how='all')
+        
+        if not df_dash.empty:
+            df_dash['Tanggal'] = df_dash['Tanggal'].astype(str)
+            df_dash['Tanggal_dt'] = pd.to_datetime(df_dash['Tanggal'], dayfirst=True, errors='coerce')
+            df_dash = df_dash.dropna(subset=['Tanggal_dt'])
+            df_dash['Volume (L)'] = pd.to_numeric(df_dash['Volume (L)'], errors='coerce').fillna(0)
             
-            if not df_dash.empty:
-                df_dash['Tanggal'] = df_dash['Tanggal'].astype(str)
-                df_dash['Tanggal_dt'] = pd.to_datetime(df_dash['Tanggal'], dayfirst=True, errors='coerce')
-                df_dash = df_dash.dropna(subset=['Tanggal_dt'])
-                df_dash['Volume (L)'] = pd.to_numeric(df_dash['Volume (L)'], errors='coerce').fillna(0)
-                
-                col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
-                total_recorded = df_dash['Volume (L)'].sum()
-                total_entries = len(df_dash)
-                avg_volume = df_dash['Volume (L)'].mean()
-                
-                def neon_metric(label, value):
-                    return f"""
-                    <div style="border:1px solid #00f2ff; padding:10px; border-radius:10px; background:rgba(0,242,255,0.05); text-align:center;">
-                        <div style="color:#aaa; font-size:0.8em; font-family:'Share Tech Mono'">{label}</div>
-                        <div style="color:#00f2ff; font-size:1.5em; font-weight:bold; font-family:'Orbitron'">{value}</div>
-                    </div>
-                    """
-                
-                with col_kpi1: st.markdown(neon_metric("TOTAL RECORDED", f"{total_recorded/1000:,.1f} kL"), unsafe_allow_html=True)
-                with col_kpi2: st.markdown(neon_metric("TOTAL INPUT", f"{total_entries}"), unsafe_allow_html=True)
-                with col_kpi3: st.markdown(neon_metric("AVG VOLUME", f"{avg_volume:,.0f} L"), unsafe_allow_html=True)
-                
-                st.markdown("---")
-                st.markdown("##### 🚛 TOTAL VOLUME PER TANGKI")
-                fuel_per_tank = df_dash.groupby("Tangki")['Volume (L)'].sum().sort_values(ascending=False)
-                st.bar_chart(fuel_per_tank, color="#00f2ff")
-                
-                st.markdown("---")
-                st.markdown("##### 📅 TREN HARIAN")
-                daily_trend = df_dash.groupby(df_dash['Tanggal_dt'].dt.strftime('%d-%m-%Y'))['Volume (L)'].sum()
-                st.line_chart(daily_trend, color="#00ff00")
-                
-            else:
-                st.info("Belum ada data history.")
-                
-        except Exception as e:
-            st.error(f"Gagal memuat dashboard: {e}")
-    
-    # Panggil fungsinya
+            col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+            total_recorded = df_dash['Volume (L)'].sum()
+            total_entries = len(df_dash)
+            avg_volume = df_dash['Volume (L)'].mean()
+            
+            def neon_metric(label, value):
+                return f"""
+                <div style="border:1px solid #00f2ff; padding:10px; border-radius:10px; background:rgba(0,242,255,0.05); text-align:center;">
+                    <div style="color:#aaa; font-size:0.8em; font-family:'Share Tech Mono'">{label}</div>
+                    <div style="color:#00f2ff; font-size:1.5em; font-weight:bold; font-family:'Orbitron'">{value}</div>
+                </div>
+                """
+            
+            with col_kpi1: st.markdown(neon_metric("TOTAL RECORDED", f"{total_recorded/1000:,.1f} kL"), unsafe_allow_html=True)
+            with col_kpi2: st.markdown(neon_metric("TOTAL INPUT", f"{total_entries}"), unsafe_allow_html=True)
+            with col_kpi3: st.markdown(neon_metric("AVG VOLUME", f"{avg_volume:,.0f} L"), unsafe_allow_html=True)
+            
+            st.markdown("---")
+            st.markdown("##### 🚛 TOTAL VOLUME PER TANGKI")
+            fuel_per_tank = df_dash.groupby("Tangki")['Volume (L)'].sum().sort_values(ascending=False)
+            st.bar_chart(fuel_per_tank, color="#00f2ff")
+            
+            st.markdown("---")
+            st.markdown("##### 📅 TREN HARIAN")
+            daily_trend = df_dash.groupby(df_dash['Tanggal_dt'].dt.strftime('%d-%m-%Y'))['Volume (L)'].sum()
+            st.line_chart(daily_trend, color="#00ff00")
+            
+        else:
+            st.info("Belum ada data history.")
+            
+    except Exception as e:
+        st.error(f"Gagal memuat dashboard: {e}")
+        
+# BUKA KEMBALI TAB DASHBOARD
+with tab_dashboard:
     render_dashboard_analytics()
 
 # ==========================================
@@ -1068,11 +1073,13 @@ with st.sidebar.expander("🗑️ HAPUS DATA (KHUSUS ADMIN / PENGAWAS)"):
         </div>
     """, unsafe_allow_html=True)
 
-    if 'df_filtered' in locals() and not df_filtered.empty:
+    df_filtered_hapus = st.session_state.get('data_tabel_aktif', pd.DataFrame())
+
+    if not df_filtered_hapus.empty:
         pilihan_hapus = []
         mapping_index = {} 
         
-        for idx, row in df_filtered.iterrows():
+        for idx, row in df_filtered_hapus.iterrows():
             tinggi_val = float(row['Tinggi (cm)']) if str(row['Tinggi (cm)']).replace('.', '', 1).isdigit() else 0.0
             label = f"{row['Tangki']} | {tinggi_val} cm | {row['Volume (L)']:,.0f} L"
             pilihan_hapus.append(label)
